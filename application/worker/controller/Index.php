@@ -30,10 +30,10 @@ class Index extends Worker
 	{
 		$uid = input('get.uid');
 		$user = Db::table('tn_user')
-				->where('uid',$uid)
-				->field('name,phone,cert,nick_name')
+				->where('id',$uid)
+				->field('name,phone,cert')
 				->find();
-		if(empty($user['name'])){
+		if($user){
 			$this->result(['user'=>$user],1,'获取数据成功');
 		} else {
 			$this->result('',0,'请完善您的个人信息');
