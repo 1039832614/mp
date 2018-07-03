@@ -86,7 +86,7 @@ class Bang extends Worker
 						$this->result('',0,'该油品库存不足');
 					}
 				} else {
-					$this->result('',0,'无可供使用的邦保养卡');
+					$this->result('',0,'邦保养次数为0');
 				}	
 			} else {
 				$this->result('',0,$plate.'不属于该汽修厂');
@@ -121,29 +121,28 @@ class Bang extends Worker
 			$oilCheck = $this->checkOil($this->sid,$data['oid'],$data['litre']);
 			//如果库存充足，则进行邦保养操作
 			if($oilCheck !== false){
-				//获取运营商处设定的金额
+				// 获取运营商处设定的金额
 				$rd = 	Db::table('cs_shop')
 							->alias('s')
 							->join(['ca_agent_set'=>'a'],'s.aid = a.aid')
 							->field('shop_fund,shop_hours')
 							->where('s.id',$this->sid)
 							->find();
-				//从总后台出获取设定的金额
-				$reward = Db::table('am_system_setup')
-						  ->where('type','技师邦保养奖励金额')
-						  ->value('money');
+				// 获取卡的总金额
+				$price = Db::table('u_card')->where('id',$data['cid'])->value('card_price');
+				$shop_fund = $price*$rd['shop_fund']/100;
 				// 构建邦保养记录数据
 				$arr = [
 					'sid' => $this->sid,
 					'odd_number' => build_order_sn(),
 					'cid' => $data['cid'],
 					'oil' => $data['oil'],
-					'uid' => $data['userid'],			
+					'uid' => $data['uid'],
 					'litre' => $data['litre'],
 					'filter' => $data['filter'],
-					'grow_up' => $rd['shop_fund'],
-					'hour_charge' => $rd['shop_hours'],
-					'total' => $rd['shop_fund']+$rd['shop_hours']
+					'grow_up' => $shop_fund,
+					'hour_charge' => $data['hour_charge'],
+					'total' => $shop_fund+$data['hour_charge']+$data['filter']
 				];
 				//构建技师成长基金记录
 				$trade_no = build_only_sn();
@@ -152,14 +151,16 @@ class Bang extends Worker
 					'mold'        => 1,
 					'type'        => 1,
 					'acid'        => $data['cid'],
-					'reward'      => $reward,
+					'reward'      => $shop_fund,
 					'trade_no'    => $trade_no,
 					'create_time' => time()
 				];
+				// 可体现收入
+				$money = $data['hour_charge']+$data['filter'];
 				//开启事务
 				Db::startTrans();
 				//减少用户卡的次数
-				$card_des = Db::table('u_card')
+				$card_dec = Db::table('u_card')
 							->where('id',$data['cid'])
 							->setDec('remain_times');
 				//汽修厂库存减少
@@ -167,25 +168,28 @@ class Bang extends Worker
 							  ->where('sid',$this->sid)
 							  ->where('materiel',$data['oid'])
 							  ->setDec('stock',$data['litre']);
-				//汽修厂账户余额增加
+				//汽修厂账户余额增加服务次数增加
 				$shop_inc = Db::table('cs_shop')
 							->where('id',$this->sid)
-							->setInc('balance',$arr['total']);
+							->inc('balance',$money)
+							->inc('grow_up',$shop_fund)
+							->inc('service_num',1)
+							->update();
 				//生成邦保养记录
 				$bang_log = Db::table('cs_income')
-							->where('sid',$this->sid)
+							->strict(false)
 							->insert($arr);
 				//技师邦保养奖励金入库
 				$worker_re = Db::table('tn_worker_reward')
 						   ->insert($info);
 				//事务提交判断
-				if($card_des && $ration_dec && $shop_inc && $bang_log && $worker_re){
+				if($card_dec && $ration_dec && $shop_inc && $bang_log && $worker_re){
 					Db::commit();
 				// 获取技师的openid
 				// $openid = Db::table('tn_user')->where('id',$data['uid'])->value('open_id');
 				// $epay = new Epay();
 				// $trade_no = build_only_sn();
-				// $epay->dibs($trade_no,$openid,$reward,'技师邦保养奖励');
+				// $epay->dibs($trade_no,$openid,$shop_fund,'技师邦保养奖励');
 					$this->result('',1,'提交成功，成长基金稍后发放');
 				} else {
 					Db::rollback();
@@ -224,7 +228,7 @@ class Bang extends Worker
 				->join(['co_bang_cate'=>'ba'],'c.oil = ba.id')
 				->where('plate',$plate)
 				->where('remain_times','>',0)
-				->field('u.name,u.phone,u.id as userid,d.month,d.km,d.filter,d.litre,car.type,c.card_number,c.remain_times,ba.name as oil,c.oil as oid,c.id as cid,c.plate')
+				->field('u.name,u.phone,u.id as userid,d.month,d.km,d.filter,d.litre,car.type,c.card_number,c.remain_times,ba.name as oil,c.oil as oid,c.id as cid,c.plate,hour_charge')
 				->find();
 	}
 } 

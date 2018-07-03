@@ -31,12 +31,12 @@ class Index extends Worker
 		$uid = input('get.uid');
 		$user = Db::table('tn_user')
 				->where('id',$uid)
-				->field('name,phone,cert')
+				->field('name,phone,cert,wx_head')
 				->find();
 		if($user){
 			$this->result(['user'=>$user],1,'获取数据成功');
 		} else {
-			$this->result('',0,'请完善您的个人信息');
+			$this->result('',0,'获取数据失败');
 		}
 	}
 	/**
@@ -60,7 +60,7 @@ class Index extends Worker
 		$us = Db::table('tn_user')->field('id')->where('open_id',$openid)->find();
 		//获取用户信息
 		$arr['nick_name'] = $data['nick_name'];
-		$arr['head_pic'] = $data['head_pic'];
+		$arr['wx_head'] = $data['head_pic'];
 		$arr['sex'] = $data['sex'];
 		//如果存在，则更新此用户相关数据
 		if($us){

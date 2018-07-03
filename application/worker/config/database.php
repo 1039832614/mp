@@ -13,7 +13,7 @@ return [
     // 数据库类型
     'type'            => 'mysql',
     // 服务器地址
-    'hostname'        => '10.66.130.70',
+    'hostname'        => '5962d5f243f03.bj.cdb.myqcloud.com',
     // 数据库名
     'database'        => 'zd',
     // 用户名
@@ -21,7 +21,7 @@ return [
     // 密码
     'password'        => 'XJsw809Ctb4r',
     // 端口
-    'hostport'        => '3306',
+    'hostport'        => '8197',
     // 连接dsn
     'dsn'             => '',
     // 数据库连接参数

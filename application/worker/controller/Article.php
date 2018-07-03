@@ -117,13 +117,24 @@ class Article extends Worker
 				->alias('a')
 				->join('tn_user u','u.id = a.uid')
 				->where([
-					'mold' => $mold,
-					'status' => [1,2]
+					'a.mold' => $mold,
+					'a.status' => [1,2]
 				])
-				->order('create_time desc')
+				->order('a.create_time desc')
 				->page($page,$pageSize)
-				->field('aid,title,thumb,u.name,create_time')
+				->field('aid,title,thumb,u.name,status,a.create_time')
 				->select();
+		foreach ($list as $key => $value) {
+			if($value['status']==2){
+				$list[$key]['reward'] = Db::table('tn_worker_reward')
+									->where('type',2)
+									->where('mold',$mold)
+									->where('acid',$value['aid'])
+									->value('reward');
+			} else {
+				$list[$key]['reward'] = null;
+			}
+		}
 		if($list){
 			$this->result(['list' => $list,'rows'=>$rows],1,'获取信息成功');
 		} else {
