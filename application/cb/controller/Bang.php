@@ -160,6 +160,13 @@ class Bang extends Bby
 	    $data['remain_times'] = $data['card_type'];
 		// 由于attach字符长度限制，先做入库处理
 		$openid = $data['openid'];
+		// 获取工时费
+		$charge = Db::table('cs_shop')
+				  ->alias('s')
+				  ->join(['ca_agent'=>'a'],'s.aid = a.aid')
+				  ->join(['ca_agent_set' => 'as'],'a.aid = as.aid')
+				  ->value('shop_hours');
+		$data['hour_charge'] = $data['card_price']*$charge/100;
 		// 删除掉data中的openid防止入库错误
 		unset($data['openid']);
 		// 生成唯一卡号
@@ -247,7 +254,7 @@ class Bang extends Bby
 			$result = $data;
 			$attach = $this->wx->getStrVal($data['attach']);
 			// 更新购卡状态
-			Db::table('u_card')->where('id',$attach['cid'])->setField('transaction_id',$data['transaction_id']);
+			Db::table('u_card')->where('id',$attach['cid'])->update(['transaction_id'=>$attach['transaction_id'],'pay_status'=>1]);
 			// 店铺售卡数增加
 			Db::table('cs_shop')->where('id',$attach['sid'])->setInc('card_sale_num');
 			// 运营商获取利润

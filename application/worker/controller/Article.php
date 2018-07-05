@@ -68,6 +68,10 @@ class Article extends Worker
 						  ->value('reward');
 			}
 		}
+		foreach ($list as $key => $value) {
+			$date = date("Y-m-d H:i:s",$value['create_time']);
+			$list[$key]['create_time'] = $date;
+		}
 		if($list){
 			$this->result(['list' => $list],1,'获取信息成功');
 		} else {
@@ -85,7 +89,9 @@ class Article extends Worker
 		           ->alias('a')
 		           ->join('tn_user u','a.uid = u.id')
 		           ->field('u.name,u.wx_head,a.aid,a.title,a.thumb,a.content,a.create_time')
+		           ->where('aid',$aid)
 		           ->find();
+		$article['create_time'] = date("Y-m-d H:i:s",$article['create_time']);
 		return $article;
 	}
 
@@ -134,6 +140,10 @@ class Article extends Worker
 			} else {
 				$list[$key]['reward'] = null;
 			}
+		}
+		foreach ($list as $key => $value) {
+			$date = date("Y-m-d H:i:s",$value['create_time']);
+			$list[$key]['create_time'] = $date;
 		}
 		if($list){
 			$this->result(['list' => $list,'rows'=>$rows],1,'获取信息成功');

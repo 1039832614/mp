@@ -86,7 +86,7 @@ class Bang extends Worker
 						$this->result('',0,'该油品库存不足');
 					}
 				} else {
-					$this->result('',0,'邦保养次数为0');
+					$this->result('',0,$plate.'邦保养次数为0');
 				}	
 			} else {
 				$this->result('',0,$plate.'不属于该汽修厂');

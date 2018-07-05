@@ -26,6 +26,11 @@ class Msgs extends Worker
 		$uid = input('get.uid');
 		$list = $msg->msgList('tn_msg',$uid,$page);
 		if(count($list['list']) > 0){
+			foreach ($list as $key => $value) 
+			{
+			$date = date("Y-m-d H:i:s",$value['create_time']);
+			$list[$key]['create_time'] = $date;
+		 	}
 			$this->result($list,1,'获取消息列表成功');
 		}else{
 			$this->result('',0,'暂无数据');
@@ -42,6 +47,7 @@ class Msgs extends Worker
 		$msg = new Msg();
 		$datil = $msg->msgDetail('tn_msg',$mid,$uid,7);
 		if($datil){
+			$datil['create_time'] = date("Y-m-d H:i:s",$datil['create_time']);
 			$this->result($datil,1,'获取消息详情成功');
 		}else{
 			$this->result('',0,'获取消息详情失败');

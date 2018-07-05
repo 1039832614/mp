@@ -55,27 +55,26 @@ class Index extends Worker
 	public function login()
 	{
 		$data = input('get.');
-		$openid = $this->getOpenId($data['code'])['openid'];
-		$api_key = md5($openid.time());
-		$us = Db::table('tn_user')->field('id')->where('open_id',$openid)->find();
-		//获取用户信息
-		$arr['nick_name'] = $data['nick_name'];
-		$arr['wx_head'] = $data['head_pic'];
-		$arr['sex'] = $data['sex'];
-		//如果存在，则更新此用户相关数据
-		if($us){
-			Db::table('tn_user')->where('open_id',$openid)->update($arr);
-			$uid = $us['id'];
-		} else {
-			//如果不存在则添加此用户
-			$arr['open_id'] = $openid;
-			$arr['user_sn'] = build_only_sn();
-			$uid = Db::table('tn_user')->insert($arr);
-		}
-		\Cache::set('tn_'.$uid.$api_key,3600);
-		$this->result(['uid' => $uid,'openid'=>$openid],1,'登录成功');
+        $openid = $this->getOpenId($data['code'])['openid'];
+        $api_key = md5($openid.time());
+        $us = Db::table('tn_user')->field('id')->where('openid',$openid)->find();
+        // 获取用户信息
+        $arr['nick_name'] = $data['nick_name'];
+        $arr['wx_head'] = $data['head_pic'];
+        // 如果存在，则更新此用户相关数据
+        if($us){
+            Db::table('tn_user')->where('openid',$openid)->update($arr);
+            $uid = $us['id'];
+        }else{
+            // 如果不存在则添加此用户
+            $arr['openid'] = $openid;
+            // $arr['user_sn'] = build_only_sn();
+            $uid = Db::table('tn_user')->insertGetId($arr);
+        }
+        \Cache::set('tn_'.$uid,$api_key,3600);
+        $this->result(['uid' => $uid,'openid'=>$openid],1,'登录成功');
 	}
-	 /**
+	  /**
      * 获取用户的openId
      */
     function getOpenId($code){

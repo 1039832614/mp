@@ -128,6 +128,10 @@ class User extends Worker
 				->order('e.create_time desc')
 				->field('e.reason,e.create_time,s.company,e.audit_time')
 				->select();
+		foreach ($list as $key => $value) {
+			$date = date("Y-m-d H:i:s",$value['create_time']);
+			$list[$key]['create_time'] = $date;
+		}
 		if($list){
 			$this->result(['list'=>$list],1,'获取列表成功');
 		} else {
@@ -179,6 +183,10 @@ class User extends Worker
 				->order('r.create_time desc')
 				->field('r.id,r.reward,r.create_time,e.type')
 				->select();
+		foreach ($list as $key => $value) {
+			$date = date("Y-m-d H:i:s",$value['create_time']);
+			$list[$key]['create_time'] = $date;
+		}
 		if($list){
 			$this->result(['list'=>$list],1,'获取列表成功');
 		} else {
@@ -201,6 +209,10 @@ class User extends Worker
 				->order('r.create_time desc')
 				->field('r.id,r.reward,r.create_time,a.aid,a.title')
 				->select();
+		foreach ($list as $key => $value) {
+			$date = date("Y-m-d H:i:s",$value['create_time']);
+			$list[$key]['create_time'] = $date;
+		}
 		if($list){
 			$this->result(['list'=>$list],1,'获取列表成功');
 		} else {
