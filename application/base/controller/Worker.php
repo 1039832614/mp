@@ -75,7 +75,7 @@ class Worker extends Base
                 ->field('sid,company,photo,about,serphone,lng,lat')
                 ->whereLike('hash_val',$hv.'%')
                 ->where('audit_status',2)
-                ->page($page,Config::get('page_size'))
+                ->page($page,6)
                 ->select();
         foreach ($list as $k => $v) {
             $photo = str_replace(['\\'], ["/"], $v['photo']);
@@ -94,13 +94,24 @@ class Worker extends Base
      */
     public function updateUserCoord($data,$table)
     {
-        $geo = new Geohash();
+        // $geo = new Geohash();
         // $data['hash_val'] = $geo->encode_hash($data['lat'],$data['lng']);
-        $res = Db::table($table)->where('uid',$data['uid'])->update($data);
+        $uid = $data['uid'];
+        unset($data['uid']);
+        $res = Db::table($table)->where('id',$uid)->update($data);
         if($res !== false){
             $this->result('',1,'更新成功');
         }else{
             $this->result('',0,'更新失败');
         }
+    }
+
+    public function uploadImage($image,$path,$host)
+    {
+        // $file = request()->file($image);
+        // $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move('./uploads/'.$path);
+        // if($info){
+        //     $res = $host.'/uploads/'.
+        // }
     }
 }

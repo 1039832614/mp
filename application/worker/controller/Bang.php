@@ -48,6 +48,7 @@ class Bang extends Worker
 	public function exg()
 	{
 		$pic = input('post.pic');
+		$pic = str_replace("https://mp.ctbls.com", '.', $pic);
 		$toPic = $this->Exg->exg($pic);
 		if(!$toPic==0){
 			$res = get_object_vars(json_decode($this->Exg->exg($pic)))['plates'];
@@ -58,8 +59,27 @@ class Bang extends Worker
 		} else {
 			$this->result('',0,'获取车牌号失败，请重新选择照片');
 		}
+
 	}
 
+	/**
+	 * 上传车牌号图片
+	 */
+	public function uploadPic()
+	{
+		// 获取表单上传文件
+   		$file = request()->file('image');
+	    // 进行验证并进行上传
+	    $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move( './uploads/worker/plate/');
+	    // 上传成功后输出信息
+	    if($info){
+    	  $res = 'https://mp.ctbls.com/uploads/worker/plate/'.$info->getSaveName();
+    	  $res = stripcslashes($res);//替换反斜杠
+    	  $this->result(['url'=>$res],1,'上传成功');
+	    }else{
+	      $this->result('',0,$file->getError());
+   		}
+	}
 	/**
 	 * 输入车牌号后，返回这个车牌号对应的邦保养卡号 以及其他信息
 	 */

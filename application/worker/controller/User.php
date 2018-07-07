@@ -25,7 +25,24 @@ class User extends Worker
 			$this->result('',0,'获取技师头像失败，请重试');
 		}
 	}
-
+	/**
+	 * 上传头像
+	 */
+	public function uploadPic()
+	{
+		// 获取表单上传文件
+   		$file = request()->file('image');
+	    // 进行验证并进行上传
+	    $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move( './uploads/worker/head/');
+	    // 上传成功后输出信息
+	    if($info){
+    	  $res = 'https://mp.ctbls.com/uploads/worker/head/'.$info->getSaveName();
+    	  $res = stripcslashes($res);//替换反斜杠
+    	  $this->result(['url'=>$res],1,'上传成功');
+	    }else{
+	      $this->result('',0,$file->getError());
+   		}
+	}
 	/**
 	 * 获取汽修厂列表
 	 */
@@ -66,9 +83,9 @@ class User extends Worker
 			$add = Db::table('tn_exshop')
 					->insert($info);
 			if($res && $add){
-				$this->result('',1,'完善个人信息成功，等待汽修厂审核');
+				$this->result('',1,'完善成功，等待审核');
 			} else {
-				$this->result('',0,'完善个人信息失败，请检查');
+				$this->result('',0,'完善失败，请检查');
 			}
 		} else {
 			$this->result('',0,$validate->getError());
