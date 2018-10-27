@@ -33,8 +33,8 @@
 					<tr style="text-align: center;">
 						<td>{$l.id}</td>
 						<td>{$l.title}</td>
-						<td>{$l.content|raw}</td>
-						<td>{$l.create_time}</td>
+						<td>{$l.contnet|raw}</td>
+						<td>{$l.time}</td>
 						<td>
 							<a href="{:url('admin/message/delMessage',['id'=>$l.id])}" onclick="return confirm('是否确认删除?');">删除</a>
 						</td>

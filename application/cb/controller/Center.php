@@ -10,6 +10,88 @@ use Config;
 class Center extends Bby
 {
 
+    // //获取引荐成功人数
+    public function followCount()
+    {
+        $uid = input('post.uid');
+        if(empty($uid)) $this->result('',0,'参数错误');
+
+        $count = Db::table('u_user')->where('pid',$uid)->count();
+        if($count > 0){
+        	$this->result($count,1,'获取成功');
+        }else{
+        	$this->result('',0,'暂无分享关注者！');
+        }
+        
+    }
+
+    /**
+     * 引荐成功的人数详情
+     * @return [type] [description]
+     */
+    public function followList()
+    {
+    	// 获取当前页   获取用户id
+    	$page = input('post.page')? :1;
+    	$uid = input('post.uid');
+    	$pageSize = 10;
+    	$count = Db::table('u_user')->where('pid',$uid)->count();
+    	$rows = ceil($count / $pageSize);
+    	$list = Db::table('u_user')->where('pid',$uid)->field('nick_name,head_pic,create_time')->page($page,$pageSize)->order('id desc')->select();
+    	if($count > 0){
+    		$this->result($list,1,'获取列表成功');
+    	}else{
+    		$this->result('',0,'暂无数据');
+    	}
+    }
+
+
+    //获取买卡人数
+     public function upperCount()
+     {
+
+        $uid = input('post.uid');
+         
+        if(empty($uid)) $this->result('',0,'参数错误');
+
+        $count = DB::table('u_card')->where(['share_uid'=>$uid,'pay_status'=>1])->count();
+        if($count > 0){
+        	$this->result($count,1,'获取成功');
+        }else{
+        	$this->result('',0,'暂无分享成功购卡者！');
+        }
+
+     }
+
+
+     /**
+     * 引荐成功购卡的人数详情
+     * @return [type] [description]
+     */
+    public function upperList()
+    {
+    	// 获取当前页   获取用户id
+    	$page = input('post.page')? :1;
+    	$uid = input('post.uid');
+    	$pageSize = 10;
+    	$count = Db::table('u_card')->where('share_uid',$uid)->count();
+    	$rows = ceil($count / $pageSize);
+    	$list = Db::table('u_card uc')
+    			->join('u_user uu','uu.id = uc.uid')
+    			->where(['share_uid'=>$uid,'pay_status'=>1])
+    			->page($page,$pageSize)
+    			->field('nick_name,head_pic,sale_time')
+    			->select();
+    	if($count > 0){
+    		$this->result($list,1,'获取列表成功');
+    	}else{
+    		$this->result('',0,'暂无数据');
+    	}
+    }
+
+
+
+
 	/**
 	 * 邦保养记录列表
 	 */
@@ -26,7 +108,8 @@ class Center extends Bby
 				->alias('i')
 				->join(['cs_shop'=>'s'],'i.sid = s.id')
 				->join(['u_card'=>'c'],'i.cid = c.id')
-				->field('company,plate,i.create_time,i.oil,i.id as bid,i.sid')
+				->field('company,plate,i.create_time,i.oil,i.id as bid,i.sid,if_comment,if_complain')
+				->where('i.uid',$uid)
 				->order('i.id desc')
 				->page($page, $pageSize)
 				->select();
@@ -75,7 +158,7 @@ class Center extends Bby
 		$uid = input('get.uid');
 		// 获取每页条数
 		$pageSize = Config::get('page_size');
-		$count = Db::table('u_card')->where('uid',$uid)->where('transaction_id','<>','')->count();
+		$count = Db::table('u_card')->where('uid',$uid)->where('pay_status',1)->count();
 		$rows = ceil($count / $pageSize);
 		// 获取数据
 		$list = Db::table('u_card')
@@ -83,7 +166,7 @@ class Center extends Bby
 				->join(['co_bang_data' => 'd'],'c.car_cate_id = d.cid')
 				->field('card_price,plate,oil_name,card_number,litre,sale_time,remain_times')
 				->where('uid',$uid)
-				->where('transaction_id','<>','')
+				->where('pay_status',1)
 				->order('c.id desc')
 				->page($page, $pageSize)
 				->select();
@@ -199,10 +282,10 @@ class Center extends Bby
 	{
 		$uid = input('get.uid');
 		$data = Db::table('u_user')->field('name,phone')->where('id',$uid)->find();
-		if($data){
+		if(!empty($data['name']) && !empty($data['phone'])){
 			$this->result($data,1,'获取成功');
 		}else{
-			$this->result('',0,'暂无信息');
+			$this->result($data,0,'暂无信息');
 		}
 	}
 
@@ -216,7 +299,7 @@ class Center extends Bby
 		// 实例化验证
 		$validate = validate('Perfect');
 		if($validate->check($data)){
-			$res = Db::table('u_user')->where('id',$data['uid'])->update(['name'=>$data['name'],'phone'=>$data['phone']]);
+			$res = Db::table('u_user')->where('id',$data['uid'])->update(['name'=>$data['name'],'phone'=>$data['phone'],'status'=>1]);
 			if($res !== false){
 				$this->result('',1,'保存成功');
 			}else{
@@ -241,6 +324,12 @@ class Center extends Bby
 					$this->result('',0,'换店理由不能为空');
 				}
 			}
+			$data['aid'] = 	Db::table('u_card')
+					->alias('c')
+					->join(['cs_shop'=>'s'],'c.sid = s.id')
+					->join(['ca_agent'=>'a'],'s.aid = a.aid')
+					->where('card_number',$data['card_number'])
+					->value('a.aid');
 			$add = Db::table('u_ex_shop')->insert($data);
 			// 向运营商发短信进行投诉->此处需填补
 			// 修改用户卡的绑定
@@ -261,7 +350,7 @@ class Center extends Bby
 	public function getCardList()
 	{
 		$uid = input('get.uid');
-		$list = Db::table('u_card')->where('uid',$uid)->field('id as cid,card_number')->order('id desc')->select();
+		$list = Db::table('u_card')->where('uid',$uid)->where('pay_status',1)->field('id as cid,card_number')->order('id desc')->select();
 		if(count($list) > 0){
 			$this->result($list,1,'获取成功');
 		}else{

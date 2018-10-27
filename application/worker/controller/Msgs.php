@@ -14,7 +14,9 @@ class Msgs extends Worker
 	 * @return [type] [description]
 	 */
 	public function msg(){
-		$res = $this->coMsg->getUrMsg('7',$this->table,$this->uid);
+		$msg = new Msg();
+		$uid = input('post.uid');
+		$res = $msg->getUrMsg('7','tn_msg',$uid);
 	}
 	/**
 	 * 消息列表
@@ -26,11 +28,6 @@ class Msgs extends Worker
 		$uid = input('get.uid');
 		$list = $msg->msgList('tn_msg',$uid,$page);
 		if(count($list['list']) > 0){
-			foreach ($list as $key => $value) 
-			{
-			$date = date("Y-m-d H:i:s",$value['create_time']);
-			$list[$key]['create_time'] = $date;
-		 	}
 			$this->result($list,1,'获取消息列表成功');
 		}else{
 			$this->result('',0,'暂无数据');
@@ -47,27 +44,42 @@ class Msgs extends Worker
 		$msg = new Msg();
 		$datil = $msg->msgDetail('tn_msg',$mid,$uid,7);
 		if($datil){
-			$datil['create_time'] = date("Y-m-d H:i:s",$datil['create_time']);
 			$this->result($datil,1,'获取消息详情成功');
 		}else{
 			$this->result('',0,'获取消息详情失败');
 		}
 	}
+	// /**
+	//  * 删除系统消息,暂时不支持
+	//  */
+	// public function delMsg()
+	// {
+	// 	$mid = input('get.mid');
+	// 	$uid = input('get.uid');
+	// 	$res = Db::table('tn_msg')
+	// 		   ->where('mid',$mid)
+	// 		   ->where('uid',$uid)
+	// 		   ->delete();
+	// 	if($res){
+	// 		$this->result('',1,'删除成功');
+	// 	} else {
+	// 		$this->result('',0,'删除失败');
+	// 	}
+	// }
+
 	/**
-	 * 删除系统消息
+	 * 判断是否有未读消息
 	 */
-	public function delMsg()
+	public function ifUnRead()
 	{
-		$mid = input('get.mid');
 		$uid = input('get.uid');
-		$res = Db::table('tn_msg')
-			   ->where('mid',$mid)
-			   ->where('uid',$uid)
-			   ->delete();
-		if($res){
-			$this->result('',1,'删除成功');
+		$count = Db::table('tn_msg')
+					->where(['uid'=>$uid,'status'=>0])
+					->count();
+		if($count > 0) {
+			$this->result('',1,'您有未读的消息');
 		} else {
-			$this->result('',0,'删除失败');
+			$this->result('',0,'没有未读的消息');
 		}
 	}
 }

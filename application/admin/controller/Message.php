@@ -13,8 +13,8 @@ class Message  extends Base
 	 */
 	public function addMessage(){
 		$data = input('post.');
-		$data['create_time'] = date('Y-m-d H:i:s', time());
-		$res = Db::table('yue_message')
+		$data['time'] = date('Y-m-d H:i:s', time());
+		$res = Db::table('yue_sysnews')
 		       ->strict(false)
 		       ->insert($data);
 		if($res){
@@ -23,19 +23,22 @@ class Message  extends Base
 			$this->error('发布失败，请稍后重试','admin/message/msgList');
 		}
 	}
+	
 	/**
 	 * 添加系统消息表单页
 	 */
 	public function add(){
 		return $this->fetch();
 	}
+
 	/**
 	 * 系统消息列表
 	 * @return [type] [description]
 	 */
+
 	public function msgList(){
-		$list = Db::table('yue_message') 
-		        ->order('create_time desc')
+		$list = Db::table('yue_sysnews') 
+		        ->order('time desc')
 				->paginate(10);
 	    $this->assign('list',$list);
 		return $this->fetch();						
@@ -45,7 +48,7 @@ class Message  extends Base
 	 */
 	public function delMessage(){
 		$id = request()->param()['id'];
-		$res = Db::table('yue_message')
+		$res = Db::table('yue_sysnews')
 		        ->where('id',$id)
 		        ->delete();
 	    if($res){

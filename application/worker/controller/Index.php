@@ -11,7 +11,7 @@ class Index extends Worker
 	 */
 	public function getBannerList()
 	{
-		$this->bannerList(1);//正式测试时，改为 3
+		$this->bannerList(3);//正式上线时，改为 3
 	}
 
 	/**
@@ -57,7 +57,7 @@ class Index extends Worker
 		$data = input('get.');
         $openid = $this->getOpenId($data['code'])['openid'];
         $api_key = md5($openid.time());
-        $us = Db::table('tn_user')->field('id')->where('openid',$openid)->find();
+        $us = Db::table('tn_user')->field('id,repair')->where('openid',$openid)->find();
         // 获取用户信息
         $arr['nick_name'] = $data['nick_name'];
         $arr['wx_head'] = $data['head_pic'];
@@ -65,14 +65,17 @@ class Index extends Worker
         if($us){
             Db::table('tn_user')->where('openid',$openid)->update($arr);
             $uid = $us['id'];
+            $repair = $us['repair'];
+            $this->result(['uid' => $uid,'openid' => $openid,'status' => 1,'repair'=>$repair],1,'登录成功');
         }else{
             // 如果不存在则添加此用户
             $arr['openid'] = $openid;
             // $arr['user_sn'] = build_only_sn();
             $uid = Db::table('tn_user')->insertGetId($arr);
+             $this->result(['uid' => $uid,'openid' => $openid,'status' => 0],1,'登录成功');
         }
         \Cache::set('tn_'.$uid,$api_key,3600);
-        $this->result(['uid' => $uid,'openid'=>$openid],1,'登录成功');
+        // $this->result(['uid' => $uid,'openid'=>$openid],1,'登录成功');
 	}
 	  /**
      * 获取用户的openId

@@ -3,8 +3,8 @@
 <head>
 	<meta charset="UTF-8">
 	<title></title>
-	<link rel="stylesheet" href="http://localhost/mp/public/static/css/zui.css">
-	<link rel="stylesheet" href="http://localhost/mp/public/static/css/za.css">
+	<link rel="stylesheet" href="__STATIC__/css/zui.css">
+	<link rel="stylesheet" href="__STATIC__/css/za.css">
 </head>
 <body>
 	<div class="container">
@@ -19,7 +19,30 @@
 			<div class="z-form-item cl">
 				<label class="z-form-label">消息内容</label>
 				<div class="z-form-block">
-					<script id="content" name="content" type="text/plain"></script>
+								<div id="div1">
+    <p>请输入消息内容</p>
+</div>
+<textarea id="text1" name="content" style="width:0px; height:0px;"></textarea>
+
+<script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+<script type="text/javascript" src="__STATIC__/wangEditor-3.1.1/release/wangEditor.min.js"></script>
+<script type="text/javascript">
+    var E = window.wangEditor
+    var editor = new E('#div1')
+    var $text1 = $('#text1')
+    editor.customConfig.onchange = function (html) {
+        // 监控变化，同步更新到 textarea
+        $text1.val(html)
+    }
+    editor.create()
+    editor.customConfig.showLinkImg = true
+						// 使用 base64 保存图片 
+						editor.customConfig.uploadImgShowBase64 = true
+						// 配置服务器端地址
+
+    // 初始化 textarea 的值
+    $text1.val(editor.txt.html())
+</script>
 				</div>
 			</div>
 			<div class="z-form-item cl">
@@ -31,8 +54,7 @@
 		</form>
 			<a href="{:url('admin/message/msgList')}" style="float: right;margin-right: 20px;margin-top: 20px;"><button class="btn btn-primary">返回上一页</button></a>
 	</div>
-	<script charset="utf-8" src="__STATIC__/js/ueditor/ueditor.config.js"></script>
-	<script charset="utf-8" src="__STATIC__/js/ueditor/ueditor.all.min.js"></script>
-	<script>UE.getEditor('content');</script>
+	
+	
 </body>
 </html>

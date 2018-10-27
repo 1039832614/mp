@@ -24,6 +24,10 @@ class Receipt extends Bby
 	 */
 	public function pay() { 
 		$data = input('post.');
+		$cid = Db::table('u_tax')->where('cid',$data['cid'])->count();
+		if($cid > 0){
+			$this->result('',2,'您已开具过发票');
+		};
 		// 系统订单号
 	    $data['trade_no'] = $this->wx->createOrder();
 		// 由于attach字符长度限制，先做入库处理
@@ -69,7 +73,8 @@ class Receipt extends Bby
             'mch_id' => Config::get('mch_id'),
             'nonce_str' => $this->wx->getNonceStr(), 
             'body' => '邦保养卡送达费',  
-            'total_fee' => $data['fee']*100, 
+            'total_fee' => 1,
+            // 'total_fee' => $data['fee']*100, 
             'openid' => $openid,
             'out_trade_no'=> $data['trade_no'], 
             'spbill_create_ip' => '127.0.0.1', 

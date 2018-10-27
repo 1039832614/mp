@@ -15,18 +15,7 @@ class Article extends Worker
 	 */
 	public function uploadPic()
 	{
-    	// 获取表单上传文件
-   		$file = request()->file('image');
-	    // 进行验证并进行上传
-	    $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move( './uploads/worker/article/');
-	    // 上传成功后输出信息
-	    if($info){
-    	  $res = 'https://mp.ctbls.com/uploads/worker/article/'.$info->getSaveName();
-    	  $res = stripcslashes($res);//替换反斜杠
-    	  $this->result(['url'=>$res],1,'上传成功');
-	    }else{
-	      $this->result('',0,$file->getError());
-   		}
+		return $this->uploadImage('image','article','https://mp.ctbls.com');
 	}
 	/**
 	 * 技师发布文章	
@@ -86,7 +75,7 @@ class Article extends Worker
 		if($list){
 			$this->result(['list' => $list],1,'获取信息成功');
 		} else {
-			$this->result('',0,'获取信息失败,您尚未发布文章');
+			$this->result('',0,'您尚未发布文章');
 		}
 	}
 
@@ -99,7 +88,7 @@ class Article extends Worker
 		$article = Db::table('tn_article')
 		           ->alias('a')
 		           ->join('tn_user u','a.uid = u.id')
-		           ->field('u.name,u.wx_head,a.aid,a.title,a.thumb,a.content,a.create_time')
+		           ->field('u.name,u.nick_name,u.wx_head,a.aid,a.title,a.thumb,a.content,a.create_time')
 		           ->where('aid',$aid)
 		           ->find();
 		$article['create_time'] = date("Y-m-d H:i:s",$article['create_time']);
@@ -139,7 +128,7 @@ class Article extends Worker
 				])
 				->order('a.create_time desc')
 				->page($page,$pageSize)
-				->field('aid,title,thumb,u.name,status,a.create_time')
+				->field('aid,title,thumb,u.name,u.nick_name,status,a.create_time')
 				->select();
 		foreach ($list as $key => $value) {
 			if($value['status']==2){

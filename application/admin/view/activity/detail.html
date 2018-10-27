@@ -22,38 +22,39 @@
 			</tr>
 			<tr>
 				<td>出发地</td>
-				<td>{$activity.origin}</td>
+				<td>{$activity.thronheim}</td>
 			</tr>
 			<tr>
 				<td>路线</td>
 				<td>{$activity.path}</td>
-			</tr><tr>
+			</tr>
+			<tr>
 				<td>风景图</td>
-				<td>
-					{volist name="pic" id="p"}
-					<img src="{$p.pic}" style="width: 200px;" alt="" /> 
-					{/volist}
+				<td>{if !empty($pic)}
+					{foreach $pic as $key=>$vo } 
+    				<img src="{$vo}" style="height: 250px;"/>
+					{/foreach}
+					{else /}
+					--
+					{/if}
 				</td>
 			</tr>
 			<tr>
 				<td>车型</td>
-				<td>{$activity.car_type}</td>
+				<td>{$activity.motorcycle}</td>
 			</tr>
-			<tr>
-				<td>内容</td>
-				<td>{$activity.details}</td>
-			</tr>
+			
 			<tr>
 				<td>活动总人数</td>
 				<td>{$activity.number}</td>
 			</tr>
 			<tr>
 				<td>剩余人数</td>
-				<td>{$activity.anumber}</td>
+				<td>{$activity.red_number}</td>
 			</tr>
 			<tr>
 				<td>创建时间</td>
-				<td>{$activity.create_time}</td>
+				<td>{$activity.time}</td>
 			</tr>
 			<tr>
 				<td>活动开始时间</td>
@@ -61,21 +62,29 @@
 			</tr>
 			<tr>
 				<td>活动结束时间</td>
-				<td>{$activity.stop_time}</td>
+				<td>{$activity.end_time}</td>
+			</tr>
+			<tr>
+				<td>活动描述</td>
+				<td>{$activity.content}</td>
 			</tr>
 			<tr>
 				<td>状态</td>
 				<td>
-					{if $activity.status==1}
+					{if $activity.static==1}
 					已通过审核
-					{else /}
-					未审核
+					{elseif $activity.static==2/}
+					已驳回
+					{elseif $activity.static==3/}
+					活动已结束
 					{/if}
 				</td>
 			</tr>
 		</table>
-		{if $activity.status==0}
-		<a href="{:url('admin/activity/check',['id'=>$activity.id])}" style="float:left;margin-top: 20px;margin-left: 20px;"><button class="btn btn-success">审核通过</button></a>
+		{if $activity.static==0}
+		<a href="{:url('admin/activity/check',['id'=>$activity.id])}" style="float:left;margin-top: 20px;margin-left: 20px;"><button class="btn btn-success">通过</button></a>
+		<a href="{:url('admin/activity/reject',['id'=>$activity.id])}" style="float:left;margin-top: 20px;margin-left: 20px;">
+			<button class="btn btn-danger">驳回</button></a>
 		{/if}
 		<a href="{:url('admin/activity/activity')}" style="float: right;margin-top: 20px;margin-right: 20px;"><button class="btn btn-primary">返回上一页</button></a>
 	</body>

@@ -36,22 +36,26 @@
 			<tbody style="text-align: center;">
 				<tr>
 					<td width="120">{$l.name}</td>
-					<td>{$l.wechat_id}</td>
+					<td>{$l.wx_number}</td>
 					<td>{$l.title}</td>
-					<td class="t-c">{$l.anumber}</td>
-					<td class="t-c">{$l.create_time}</td>
+					<td class="t-c">{$l.red_number}</td>
+					<td class="t-c">{$l.time}</td>
 					<td class="t-c">
-						{if !($l.anumber==0)}
+						{if !($l.red_number==0)}
 				        满额
 				        {else /}
 				        未满额
 				        {/if}
 					</td>
 					<td class="t-c">
-						{if $l.status == 1}
-						<span class="z-success">有效</span>
-						{else /}
-						<span class="z-note">无效</span>
+						{if $l.static == 1}
+						<span class="z-success">已通过审核</span>
+						{elseif $l.static == 0/}
+						<span class="z-note">未审核</span>
+						{elseif $l.static == 2/}
+						<span class="z-note">已驳回</span>
+						{elseif $l.static == 3/}
+						<span class="z-note">活动已结束</span>
 						{/if}
 					</td>
 					<td class="t-c" width="80"><a href="{:url('admin/activity/detail',['id'=>$l.id])}">详情</a></td>

@@ -17,9 +17,9 @@
 			</div>
 			<div class="verify">
 				<input type="text" name="captcha" placeholder="验证码">
-				<!-- <img src="https://note.youdao.com/login/acc/urs/verify/get?product=YNOTE&width=80&height=32&rc=0.12653496475289927" alt=""> -->
-			<img src="{:captcha_src()}" id="captcha" />
-				<a class="reload"><label>刷新</label></a>
+				<img src="{:captcha_src()}" id="captcha" />
+			
+
 			</div>
 			<div>
 				<button type="submit">登录</button>
@@ -53,6 +53,7 @@
     		c.src = "{:captcha_src()}?rand="+Math.random();
     	}
     </script>
+
 	<script src="__STATIC__/js/canvas-particle.js"></script>
 </body>
 </html>

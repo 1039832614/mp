@@ -17,15 +17,20 @@ class Comment extends Bby
 		$if_comment = Db::table('cs_income')->where('id',$data['bid'])->value('if_comment');
 		if($if_comment < 1){
 			// 插入数据
-			$add = Db::table('u_comment')->insert($data);
+			$add = Db::table('u_comment')->insertGetId($data);
 			// 邦保养记录奖励状态改变
 			$up_comment = Db::table('cs_income')->where('id',$data['bid'])->setField('if_comment',1);
 			// 开启事务
 			Db::startTrans();
 			// 好评奖励
-			if($data['tn_star'] == 5 && $data['shop_star']){
+			if($data['tn_star'] == 5 && $data['shop_star'] == 5){
 				$up_balance = $this->getReward($data['sid']);
-				$exp = ($add && $up_comment !== false && $up_balance !== false);
+				if($add){
+					$money = Db::table('u_comment')->where('id',$add)->setField('money',10);
+				}else{
+					$this->result('',1,'未添加评论');
+				}
+				$exp = ($money !== false && $up_comment !== false && $up_balance !== false);
 			}else{
 				$exp = ($add && $up_comment !== false);
 			}
@@ -75,13 +80,13 @@ class Comment extends Bby
 	 */
 	public function getReward($sid)
 	{
-		// 获取奖励金额
-		$reward  = 	Db::table('cs_shop')
-					->alias('s')
-					->join(['ca_agent_set'=>'a'],'s.aid = a.aid')
-					->where('s.id',$sid)
-					->value('shop_praise');
+		// // 获取奖励金额
+		// $reward  = 	Db::table('cs_shop')
+		// 			->alias('s')
+		// 			->join(['ca_agent_set'=>'a'],'s.aid = a.aid')
+		// 			->where('s.id',$sid)
+		// 			->value('shop_praise');
 		// 维修厂获得奖励
-		return Db::table('cs_shop')->where('id',$sid)->setInc('balance',$reward);
+		return Db::table('cs_shop')->where('id',$sid)->setInc('balance',10);
 	}
 }

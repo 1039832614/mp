@@ -23,7 +23,7 @@
 					<th>微信号</th>
 					<th>昵称</th>
 					<th>性别</th>
-					<th  width="80">查看</th>
+					<th>详情</th>
 				</tr>
 			</thead>
 			{volist name="user" id="u"}
@@ -33,15 +33,21 @@
 						{$u.name}
 					</td>
 					<td>
-						{$u.wechat_id}
+						{$u.wx_number}
 					</td>
 					<td class="t-c">
-						{$u.nick_name}
+						{$u.nikename}
 					</td>
 					<td class="t-c">
-						{$u.sex}
+					{if $u.sex==1}
+					男
+					{else /}
+					女
+					{/if}
 					</td>
-					<td><a href="{:url('admin/user/userTake',['id'=>$u.id])}">他的参与</a></td>
+					<td class="t-c">
+						<a href="{:url('admin/user/userTakeDetail',['id'=>$u.u_id])}">详情</a>
+					</td>
 				</tr>
 			</tbody>
 			{/volist}

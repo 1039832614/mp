@@ -75,7 +75,6 @@ class Worker extends Base
                 ->field('sid,company,photo,about,serphone,lng,lat')
                 ->whereLike('hash_val',$hv.'%')
                 ->where('audit_status',2)
-                ->page($page,6)
                 ->select();
         foreach ($list as $k => $v) {
             $photo = str_replace(['\\'], ["/"], $v['photo']);
@@ -106,12 +105,26 @@ class Worker extends Base
         }
     }
 
+    /**
+     * 上传图片
+     * @param  [type] $image [description]
+     * @param  [type] $path  [description]
+     * @param  [type] $host  [description]
+     * @return [type]        [description]
+     */
     public function uploadImage($image,$path,$host)
     {
-        // $file = request()->file($image);
-        // $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move('./uploads/'.$path);
-        // if($info){
-        //     $res = $host.'/uploads/'.
-        // }
+        // 获取表单上传文件
+        $file = request()->file($image);
+        // 进行验证并进行上传
+        $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move( './uploads/worker/'.$path.'/');
+        // 上传成功后输出信息
+        if($info){
+          $res = $host.'/uploads/worker/'.$path.'/'.$info->getSaveName();
+          $res = stripcslashes($res);//替换反斜杠
+          $this->result(['url'=>$res],1,'上传成功');
+        }else{
+          $this->result('',0,$file->getError());
+        }
     }
 }

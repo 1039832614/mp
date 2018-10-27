@@ -23,6 +23,7 @@ class Shop extends Bby
 	public function getDetail()
 	{
 		$sid = input('get.sid');
+		// print_r($sid);exit;
 		$data = Db::table('cs_shop')
 				->alias('s')
 				->join(['cs_shop_set'=>'t'],'s.id = t.sid')

@@ -17,9 +17,9 @@ class Activity extends Base
 	{
 		$list = Db::table('yue_activity')
 		         ->alias('a')
-		         ->join('yue_user u','a.creator_id = u.id')
-		         ->order('a.create_time')
-		         ->field('a.id,title,name,wechat_id,a.status,a.create_time,anumber')
+		         ->join('yue_user u','a.uid = u.u_id')
+		         ->order('a.time')
+		         ->field('a.id,title,name,wx_number,static,time,red_number')
 		         ->paginate(10);
 		$this->assign('list',$list);
 		return $this->fetch();         
@@ -32,16 +32,14 @@ class Activity extends Base
 		$id = request()->param()['id'];
 		$activity = Db::table('yue_activity')
 		            ->alias('a')
-					->join('yue_user u','u.id = a.creator_id')
+					->join('yue_user u','u.u_id = a.uid')
 					->where('a.id',$id)
-					->field('a.id,title,car_type,a.create_time,origin,start_time,details,stop_time,path,number,anumber,a.status,name,wechat_id,sex')
+					->field('a.id,title,motorcycle,time,thronheim,start_time,end_time,path,number,red_number,a.static,name,wx_number,sex,content')
 					->find();		
-		$pic = Db::table('yue_activity_picture')
-		       ->alias('p')
-			   ->join('yue_activity a','a.id = p.aid')
-			   ->where('a.id',$id)
-			   ->field('pic')
-			   ->select();	  
+		$pic = Db::table('yue_activity')		 
+			   ->where('id',$id)
+			   ->value('pic');
+		$pic = json_decode($pic);
 	    $this->assign('pic',$pic);
 		$this->assign('activity',$activity);
 		return $this->fetch();
@@ -61,9 +59,6 @@ class Activity extends Base
 			Db::table('yue_activity')
 			    ->where('id',$id)
 			    ->delete();
-			Db::table('yue_activity_picture')
-			    ->where('aid',$id)
-			    ->delete();
 			Db::table('yue_participant')
 			    ->where('aid',$id)
 			    ->delete();
@@ -81,9 +76,23 @@ class Activity extends Base
 		$id = request()->param()['id'];
 		$res = Db::table('yue_activity')
 		       ->where('id',$id)
-		       ->update(['status' => 1]);
+		       ->update(['static' => 1]);
 		if($res){
 			$this->success('审核通过','admin/activity/activity');
+		} else {
+			$this->error('操作失败，请稍后重试','admin/activity/activity');
+		}
+	}
+	/**
+	 * 驳回操作
+	 */
+	public function reject(){
+		$id = request()->param()['id'];
+		$res = Db::table('yue_activity')
+		       ->where('id',$id)
+		       ->update(['static' => 2]);
+		if($res){
+			$this->success('已驳回','admin/activity/activity');
 		} else {
 			$this->error('操作失败，请稍后重试','admin/activity/activity');
 		}

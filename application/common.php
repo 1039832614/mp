@@ -119,9 +119,33 @@ function build_order_sn()
     return str_pad(mt_rand(1, 999), 3, '0', STR_PAD_LEFT) . time();
 }
 
+/**
+   * 获取省
+   *@return $msg 成功或者失败
+   */
+function province(){
+    $china = Db::table('co_china_data')->where('pid',1)->field('name,id')->select();
+    return $china;
+  }
+  /**
+   * 获取市
+   *@return $msg 成功或者失败
+   */
+function city(){
+    $id = input("get.id");
+    $city = Db::table('co_china_data')->where('pid',$id)->field('id,name')->select();
+    return $city;
+  }
+  /**
+   * 获取县
+   *@return $msg 成功或者失败
+   */
+function county(){
+    $id = input("get.id");
+    $county = Db::table('co_china_data')->where('pid',$id)->field('id,name')->select();
+    return $county;
+  }
 
-
-
-
+  
 
   

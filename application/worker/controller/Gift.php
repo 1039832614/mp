@@ -23,24 +23,34 @@ class Gift extends worker
 	public function getGiftName()
 	{
 		$excode = input('post.excode');
-		//检测兑换码是否有效
-		$res = $this->checkExCode($this->sid,$excode);
-		//如果是店铺提供的服务
-		$gift = Db::table('cs_gift')
-				->where('excode',$excode)
-				->value('gift_name');
-		if($gift){
-			$this->result($gift,1,'获取数据成功');
+		if($excode) {
+			//检测兑换码是否有效
+			$res = $this->checkExCode($this->sid,$excode);
+			//如果是店铺提供的服务
+			$gift = Db::table('cs_gift')
+					->where('excode',$excode)
+					->value('gift_name');
+			if($gift){
+				$gift = stripcslashes($gift);
+				$this->result($gift,1,'获取数据成功');
+			} else {
+				$this->result('',0,'获取赠品信息失败');
+			}
 		} else {
-			$this->result('',0,'获取赠品信息失败');
+			$this->result('',0,'请输入内容');
 		}
+		
 	}
 	/**
 	 * 进行兑换礼品
 	 */
 	public function exGift()
 	{
+		$data = input('post.');
 		$excode = input('post.excode');
+		if(empty($excode)){
+			$this->result('',0,'请输入内容');
+		}
 		$gift_name = input('post.gift');
 		//检测兑换码是否有效
 		$res = $this->checkExCode($this->sid,$excode);
@@ -51,37 +61,21 @@ class Gift extends worker
 								->alias('g')
 								->join(['u_card'=>'c'],'g.cid = c.id')
 								->where('excode',$excode)
-								->value('card_number');
-			//如果类别小于3则兑换赠品
-			if($res['gcate'] < 3){
-				//检测库存是否充足
-				$this->checkRation($this->sid,$res['gid']);
-				//如果充足则减少库存
-				$se = Db::table('cs_ration')
-					  ->where('sid',$this->sid)
-					  ->where('materiel',$res['gid'])
-					  ->setDec('stock',1);
-			} else {
-				//获取兑换服务名称
-				$server_name = Db::table('cs_service')
-								->where('sid',$this->sid)
-								->value('service');
-				//如果等于3则兑换自己的服务，添加收入记录
-				//构建入库数据
-				$info = [
-					'sid'         => $this->sid,
-					'ex_charge'   => 100,
-					'excode'      => $excode,
-					'card_number' => $card_number
-				];
-				$si = Db::table('cs_ex_income')
-					  ->insert($info);
-				//系统补助费100元
-				$sa = Db::table('cs_shop')
-				      ->where('id',$this->sid)
-				      ->setInc('balance',100);
+								->value('g.card_number');
+			//检测库存是否充足
+			$gs = Db::table('cs_ration')
+					->where('sid',$this->sid)
+					->where('materiel',$res['gid'])
+					->value('stock');
+			if($gs <= 0){
+				$this->result('',0,'该赠品库存不足，请进行补货后再进行兑换');
 			}
-			// 兑换码状态->失效，兑换信息改变
+			//如果充足则减少库存
+			$se = Db::table('cs_ration')
+					->where('sid',$this->sid)
+					->where('materiel',$res['gid'])
+					->setDec('stock',1);
+			//兑换码失效，兑换信息改变
 			$ex = Db::table('cs_gift')
 					->where('excode',$excode)
 					->update(['ex_time'=>time(),'status'=>2]);
@@ -96,47 +90,15 @@ class Gift extends worker
 				'gift_name'   => $gift_name
 			];
 			$re = Db::table('tn_gift')
-				->insert($arr);
-			// 进行事务处理
-			// if(isset($se) && isset($ex)){
-			// 	if($se !== false && $sx !== false){
-			// 		Db::commit();
-			// 		$this->result($gift,1,'兑换成功');
-			// 	}else{
-			// 		Db::rollback();
-			// 		$this->result('',0,'兑换失败');
-			// 	}
-			// }else if(isset($si) && isset($sa) && isset($ex)){
-			// 	if($si && $ex !== false && $sa !== false){
-			// 		Db::commit();
-			// 		$this->result($gift,1,'兑换成功');
-			// 	}else{
-			// 		Db::rollback();
-			// 		$this->result('',0,'兑换失败');
-			// 	}
-			// }
-			if($ex && $re){
+				->insert($arr);	
+			if($se !== false && $ex !== false & $re !== false){
 				Db::commit();
 				$this->result('',1,'兑换成功');
 			} else {
-				Db::rollback();
 				$this->result('',0,'兑换失败');
-			}		
+			}
 		} 
 	}
-
-
-	/**
-	 * 检测赠品库存是否充足
-	 */
-	public function checkRation($sid,$gid)
-	{
-		// 赠品库存是否充足
-		$gs = Db::table('cs_ration')->where('sid',$sid)->where('materiel',$gid)->value('stock');
-		// 如果库存充足则进行兑换
-		if($gs <= 0) $this->result('',0,'该赠品库存不足，请进行补货后再进行兑换');
-	}
-
 	/**
 	 * 检测兑换码是否有效
 	 */
@@ -146,13 +108,12 @@ class Gift extends worker
 		$res = 	Db::table('cs_gift')
 				->field('cid,gcate,gid')
 				->where('excode',$excode)
-				->where('sid',$sid)
 				->where('status',1)
 				->find();
 		if($res){
 			return $res;
 		}else{
-			$this->result('',0,'兑换码已失效或不属于本店');
+			$this->result('',0,'兑换码不符合兑换条件');
 		}
 	}
 }
