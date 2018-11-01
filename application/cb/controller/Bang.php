@@ -220,9 +220,10 @@ class Bang extends Bby
 				'uid'=>$data['uid'],
 				'name'=>$user_data['name'],
 				'phone'=>$user_data['phone'],
-				'end_time'=>date('Y-m-d H:i:s',strtotime("+1 years 1months",time())),
+				'end_time'=>date('Y-m-d H:i:s',strtotime("+1 years",time())),
 				'm_order'=>$this->createCardNum(),
 				'trade_no'=>$this->wx->createOrder(),
+				'member_table_status'=>1,
 			];
 			
 			$memberId = Db::table('u_member_table')->insertGetId($arr);
@@ -243,12 +244,13 @@ class Bang extends Bby
 			$memberId = 0;
 		}
 		unset($data['close']);
-		// 查询此用户是否为会员
-		$count = Db::table('u_member_table')->where('uid',$data['uid'])->where('pay_time','>',0)->where('end_time','>',date('Y-m-d H:i:s'))->order('id desc')->limit(1)->count();   //12.24
-		if($count > 0){
-			//减去用户享受折扣价次数
-			Db::table('u_member_table')->where('uid',$data['uid'])->where('pay_time','>',0)->where('end_time','>',date('Y-m-d H:i:s'))->order('id desc')->setDec('pay_time');
-		}
+		// 查询此用户是否为会员 
+		// 写在此处，当用户掉起支付没有付款时，也减去次数了
+		// $count = Db::table('u_member_table')->where('uid',$data['uid'])->where('pay_time','>',0)->where('end_time','>',date('Y-m-d H:i:s'))->order('id desc')->limit(1)->count();   //12.24
+		// if($count > 0){
+		// 	//减去用户享受折扣价次数
+		// 	Db::table('u_member_table')->where('uid',$data['uid'])->where('pay_time','>',0)->where('end_time','>',date('Y-m-d H:i:s'))->order('id desc')->setDec('pay_time');
+		// }
 
     	$lastId = Db::table('u_card')->insertGetId($data);
     	if($lastId){
@@ -363,6 +365,28 @@ class Bang extends Bby
 						Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('balance',10)->inc('card_month')->update();
 					}
 					
+					//获取当前用户的uid xjm 2018.10.27
+					$uid = Db::table('u_card')
+							->where('id',$attach['cid'])
+							->value('uid');
+					//查询此用户是否是会员 xjm 2018.10.27
+					$count = Db::table('u_member_table')
+							->where('uid',$uid)
+							->where('pay_time','>',0)
+							->where('end_time','>',date('Y-m-d H:i:s'))
+							->order('id desc')
+							->limit(1)
+							->count();
+					//xjm 2018.10.27
+					if($count > 0){
+						//减去用户享受折扣价次数
+						Db::table('u_member_table')
+						->where('uid',$uid)
+						->where('pay_time','>',0)
+						->where('end_time','>',date('Y-m-d H:i:s'))
+						->order('id desc')
+						->setDec('pay_time');
+					}
 					// print_r($attach['memberId']);exit;
 					// $attach['memberId'] = $memberId;
 					// $memberId = $attach['memberId'];
@@ -511,7 +535,9 @@ class Bang extends Bby
 				// 获取服务经理分佣
 				$sm = $this->smReward($sid,$agent_set,$total,$cid);
 
-				if($ca_inc_log && $su_income && $sm == ture){
+				// if($ca_inc_log && $su_income && $sm == ture){
+				// xjm 2018.10.27 15:28
+				if($ca_inc_log && $su_income && $sm == true){
 					$this->result('',1,'成功');
 				}else{
 					$this->result('',0,'失败');
@@ -607,7 +633,7 @@ class Bang extends Bby
 							->insert($arr);
 			if($res !== false) {
 				$epay = new BbyEpay();
-						$sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,1*100,'售卡奖励分佣');
+						$sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,$money*100,'售卡奖励分佣');
 				if($sm_yy_reward!==false) {
 					return true;
 				} else {
@@ -677,7 +703,7 @@ class Bang extends Bby
 					// print_r($sm_name);exit;
 					if($res !== false){
 						$epay = new BbyEpay();
-						$sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],1,'服务经理售卡奖励分佣');
+						$sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],$money*100,'服务经理售卡奖励分佣');
 						// return $sm_reward;die();
 					}
 					// 通过服务经理id 及 服务经理的地区判断服务经理该地区通过的时间
@@ -788,7 +814,7 @@ class Bang extends Bby
 			if($add){
 				$epay = new BbyEpay();
 				$trade_no = build_only_sn();
-				$epay->dibs($trade_no,$openid,1*100,'推荐成功奖励');
+				$epay->dibs($trade_no,$openid,10*100,'推荐成功奖励');
 			}
 			// // 查询分享用户是否有待激活的兑换码
 			// $ex_count = Db::table('cs_gift')->field('id,excode')->where('uid',$uid)->where('status',0)->select();

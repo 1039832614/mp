@@ -58,71 +58,86 @@ class Turntable extends Bby
 		    	'prob'  => $res['prob'],
 		    	'num'  => $res['num'],
 		    ];
-		    // var_dump($result);die;
 		    if($result){
-		    	// 领取条件减一
-				$card = Db::table('u_user')
-						->where('id',$uid)
-						->setDec('lottery');
 				$this->result($result,1,'成功抽奖');
 			}else{
 				$this->result('',0,'抽奖失败');
 			}
 		}
 	}
-	 /*
-	//  * 点击领取
-	//  */
+	/**
+	 * 点击领取
+	 * @return [type] [description]
+	 */
 	public function choice()
 	{
-		// echo 1;
-		
 		$data = input('post.');
-		if(time() - session('time'.$data['uid']) < 20){
-			$this->result('',5,'请勿重复领取!');
-		}else{
-			session('time'.$data['uid'],time());
-			// 检测是否符合领取条件
-			$card = Db::table('u_card')
-					->field('id,sid,card_number')
-					->order('id desc')
-					->where('uid',$data['uid'])
-					->find();
-			$name = Db::table('u_prize')->where('id',$data['id'])->value('name');
-			// 构建插入数据
-			if($card){
-				$arr = [
-				'uid' => $data['uid'],  //用户id
-				'cid' => $card['id'],  //购卡id
-				'sid'	=>$card['sid'],  //所在店铺
-				'gid'	=> $data['id'],    //赠品id
-				'gift_name'	=> $name,  //赠品名称
-				'status' => 1,     //未激活状态
-				'card_number' =>$card['card_number']
-				];
+		// 获取当前用户的抽奖机会
+		$count = Db::table('u_user')
+				->where('id',$data['uid'])
+				->value('lottery');
+		if($count > 0) {
+			if(!empty(cookie('time'.$data['uid']))){
+				$this->result('',5,'请勿重复领取!');
 			}else{
-				$arr = [
-				'uid' => $data['uid'],  //用户id
-				'cid' => 0,  //购卡id
-				'sid'	=>0,  //所在店铺
-				'gid'	=> $data['id'],    //赠品id
-				'gift_name'	=> $name,  //赠品名称
-				'status' => 1,     //未激活状态
-				'card_number' =>''
-				];
-			}
-			
-			if($arr['gift_name'] =='光波炉'){
-				$arr['excode']=build_only_sn();   //兑现码
-				$arr['gcate']= '1'; //赠品类型
-			}else{
-				$arr['excode']='';
-				$arr['gcate']= '2';
-			}
-			// 进行入库操作
-			$list=Db::table('cs_gift')->insert($arr);
-			if($list){
-				//红包
+				cookie('time'.$data['uid'],time(),10);
+				Db::startTrans();
+				// 检测是否符合领取条件
+				$card = Db::table('u_card')
+						->field('id,sid,card_number')
+						->order('id desc')
+						->where('uid',$data['uid'])
+						->find();
+				$prize = Db::table('u_prize')
+						->where('id',$data['id'])
+						->field('name,draw,price')
+						->find();
+				if(empty(cookie('trade_no'.$data['uid']))){
+					$trade_no = build_only_sn();
+					cookie('trade_no'.$data['uid'],$trade_no,10);
+				} else {
+					$trade_no = cookie('trade_no'.$data['uid']);
+				}
+				// 构建插入数据
+				if($card){
+					$arr = [
+						'uid'         => $data['uid'],      //用户id
+						'cid'         => $card['id'],       //购卡id
+						'sid'	      => $card['sid'],      //所在店铺
+						'gid'	      => $data['id'],       //赠品id
+						'gift_name'   => $prize['name'],    //赠品名称
+						'status'      => 1,                 //未激活状态
+						'card_number' => $card['card_number'],
+						'trade_no'    => $trade_no
+					];
+				}else{
+					$arr = [
+						'uid'         => $data['uid'],   //用户id
+						'cid'         => 0,              //购卡id
+						'sid'	      => 0,              //所在店铺
+						'gid'	      => $data['id'],    //赠品id
+						'gift_name'	  => $prize['name'], //赠品名称
+						'status'      => 1,              //未激活状态
+						'card_number' => '',
+						'trade_no'    => $trade_no
+					];
+				}
+				
+				if($prize['name'] =='光波炉'){
+					$arr['excode']  = build_only_sn();   
+					$arr['gcate']   = '1'; //赠品类型
+				}else{
+					$arr['excode'] = '';
+					$arr['gcate']  = '2';
+				}
+				// 进行入库操作
+				$list = Db::table('cs_gift')
+							->insert($arr);
+				//减少抽奖次数
+				$dec_lo = Db::table('u_user')
+							->where('id',$data['uid'])
+							->setDec('lottery');
+				//查询红包的id
 				$price = Db::table('u_prize')
 						->field('id')
 						->where('name','红包')
@@ -130,24 +145,35 @@ class Turntable extends Bby
 				foreach ($price as $key => $value) {
 					$arrs[] = $value['id'];
 				}
-				if(in_array($data['id'], $arrs)){
-					//红包支付
-					$this->money($data['id'],$data['uid']);
-					$this->result('',4,'领取红包成功!'); 
-				}
-				//是否到店领取
-				$draw = Db::table('u_prize')
-						->where('id',$data['id'])
-						->value('draw');
-				if($draw == 1){
-					$this->result('',3,'领取礼品成功，成功邀请好友购卡即可激活兑现码，到店领取!');  //列表
+				if($list !== false && $dec_lo !== false){
+					
+					if(in_array($data['id'], $arrs)){
+						//红包支付
+						//判断当前用户点击领取的订单号是否在cookie中，下次必须在10秒以后才发放红包
+						if(empty(cookie('if_pay'.$data['uid']))){
+							Db::commit();
+							//将订单号，存入cookie，时间为10秒
+							cookie('if_pay'.$data['uid'],$trade_no,10);
+							$this->money($trade_no,$prize['price'],$data['id'],$data['uid']);
+						}
+					}
+					//是否到店领取
+					if($prize['draw'] == 1){
+						Db::commit();
+						$this->result('',3,'领取礼品成功，成功邀请好友购卡即可激活兑换码，到店领取!');  
+					}else{
+						Db::commit();
+						$this->result($arr['gid'],2,'领取礼品成功!');  //去填写地址
+					}
 				}else{
-					$this->result($arr['gid'],2,'领取礼品成功!');  //去填写地址
+					Db::rollback();
+					$this->result('',0,'领取失败'); 
 				}
-			}else{
-				$this->result('',0,'领取失败'); 
 			}
+		} else {
+			$this->result('',0,'您无抽奖机会');
 		}
+		
 	}
 	
 	  //计算中奖概率
@@ -253,6 +279,8 @@ class Turntable extends Bby
 				->join('u_user u','g.uid = u.id')
 				->join('u_prize p','g.gid = p.id')
 				->field('u.name as man,g.create_time,p.name as gift_name,p.price')
+				->order('g.id desc')
+				->limit(10)
 				->select();
 		if($list){
 			$this->result($list,1,'获取成功');
@@ -263,17 +291,18 @@ class Turntable extends Bby
 	/**
 	 * 发放红包
 	 */
-	public function money($id,$uid){
-		$openid = Db::table('u_user')->where('id',$uid)->value('open_id');
-		$moneys = Db::table('u_prize')->where('id',$id)->value('price');
-		$trade_no = build_only_sn();
+	public function money($trade_no,$money,$id,$uid){
+		$openid = Db::table('u_user')
+					->where('id',$uid)
+					->value('open_id');
 		$epay = new BbyEpay();
-		$epay->dibs($trade_no,$openid,1*100,'幸运大转盘获得金额');
+		$epay->dibs($trade_no,$openid,1*100,'幸运大转盘获得金额');//测试金额
+		// $epay->dibs($trade_no,$openid,$money*100,'幸运大转盘获得金额');
 		$max_id = Db::table('cs_gift')
 						->where('uid',$uid)
 						->order('id desc')
 						->limit(1)
-						->value('id'); //0905xjm新增。
+						->value('id'); 
 		$arr = Db::table('cs_gift')
 				->where('uid',$uid)
 				->where('id',$max_id)
@@ -282,7 +311,6 @@ class Turntable extends Bby
 	}
 
 
-	
 
 
 }

@@ -37,7 +37,7 @@ class Member extends Bby
             // 根据用户id获取用户姓名（u_user表用户完善信息的姓名）
             $name_phone = Db::table('u_user')->where('id',$data['uid'])->field('name,phone,open_id')->find();
 
-            $time = date('Y-m-d',strtotime("+1 years",time()));
+            $time = date('Y-m-d H:i:s',strtotime("+1 years",time()));
 
             $arr = [
                 'uid' => $data['uid'],
@@ -97,12 +97,12 @@ class Member extends Bby
             'mch_id' => Config::get('mch_id'),
             'nonce_str' => $this->wx->getNonceStr(), 
             'body' => $arr['name'].'邦保养会员',  
-            // 'total_fee' => $arr['price']*100, 
-            'total_fee' => 1,
+            'total_fee' => $arr['price']*100, //2018-10-27线上
+            // 'total_fee' => 1,
             'openid' => $openid,
             'out_trade_no'=> $arr['trade_no'], 
             'spbill_create_ip' => '127.0.0.1', 
-            'notify_url' => 'https://xmp.ctbls.com/cb/Member/notify', 
+            'notify_url' => 'https://mp.ctbls.com/cb/Member/notify', 
             'trade_type' => 'JSAPI',
             'attach' => 'cid='.$memberId.'&man='.$data['man'].'&phone='.$data['phone'].'&address='.$data['address'].'&details='.$data['details'].'&area='.$data['area'].'&uid='.$data['uid'],
         );  
@@ -147,16 +147,35 @@ class Member extends Bby
 					$result = $data;
 					$attach = $this->wx->getStrVal($data['attach']);
 					//修改会员状态
-					Db::table('u_member_table')->where('id',$attach['memberId'])->update(['transaction_id'=>$result('transaction_id'),'pay_status'=>1]);
+					// Db::table('u_member_table')->where('id',$attach['memberId'])->update(['transaction_id'=>$result('transaction_id'),'pay_status'=>1]);
+                    // xjm 2018.10.27 10:37 新增
+                    Db::table('u_member_table')
+                    ->where('id',$attach['cid'])
+                    ->update([
+                        'transaction_id' => $result['transaction_id'],
+                        'pay_status' => 1
+                    ]); 
+                    // $arr = [
+                    //     'aid'=>365,
+                    //     'uid'=>$athach['uid'],
+                    //     'man'=>$athach['man'],
+                    //     'phone'=>$athach['phone'],
+                    //     'address'=>$athach['address'],
+                    //     'details'=>$athach['details'],
+                    //     'area'=>$athach['area'],  // 地区id
+                    //     'member'=>$memberId,
+
+                    // ];
+                    // xjm 2018.10.27 10:40新增
                     $arr = [
-                        'aid'=>365,
-                        'uid'=>$athach['uid'],
-                        'man'=>$athach['man'],
-                        'phone'=>$athach['phone'],
-                        'address'=>$athach['address'],
-                        'details'=>$athach['details'],
-                        'area'=>$athach['area'],  // 地区id
-                        'member'=>$memberId,
+                        'aid'     => 365,
+                        'uid'     => $attach['uid'],
+                        'man'     => $attach['man'],
+                        'phone'   => $attach['phone'],
+                        'address' => $attach['address'],
+                        'details' => $attach['details'],
+                        'area'    => $attach['area'],  // 地区id
+                        'member'  => $attach['cid'],
 
                     ];
 					// 入库地址信息

@@ -21,21 +21,9 @@ class Index extends Bby
     public function ifMember()
     {
         $uid = input('post.uid');
-        $list = Db::table('u_member_table')
-                ->where([
-                    'uid'=>$uid,
-                    'pay_status'=>1
-                ])
-                ->where('end_time','>',date('Y-m-d H:i:s'))
-                ->count();
+        $list = Db::table('u_member_table')->where(['uid'=>$uid,'pay_status'=>1])->where('end_time','>',date('Y-m-d H:i:s'))->count();
         if($list > 0){
-            $expire = Db::table('u_member_table')
-                        ->where([
-                            'uid'=>$uid,
-                            'pay_status'=>1
-                        ])
-                        ->where('end_time','>',date('Y-m-d H:i:s'))
-                        ->count();
+            $expire = Db::table('u_member_table')->where(['uid'=>$uid,'pay_status'=>1])->where('end_time','>',date('Y-m-d H:i:s'))->count();
             if($expire > 0){
                  $this->result('',1,'该用户为会员');
             }else{
@@ -73,11 +61,13 @@ class Index extends Bby
 		$lat = input('get.lat');
 		$lng = input('get.lng');
 		$uid = input('get.uid');
+        // var_dump(input('get.'));die;
 		$data = [
 			'lat'=>$lat,
 			'lng'=>$lng,
+            'uid'=>$uid,
 		];
-		$this->upUserCoord($data,$uid,'u_user');
+		$this->upUserCoord($data,'u_user');
 	}
 
 	/**
@@ -145,7 +135,15 @@ class Index extends Bby
         // 如果存在，则更新此用户相关数据
         if($us){
              // 查看用户是否是会员
-            $count = Db::table('u_member_table')->where('uid',$us['id'])->where('end_time','>',date('Y-m-d H:i:s'))->count();
+            // $count = Db::table('u_member_table')->where('uid',$us['id'])->where('end_time','>',date('Y-m-d H:i:s'))->count();
+            // xjm 2018.10.27 14:33
+            $count = Db::table('u_member_table')
+                    ->where([
+                        'uid'        => $us['id'],
+                        'pay_status' => 1
+                    ])
+                    ->where('end_time','>',date('Y-m-d H:i:s'))
+                    ->count();
             if($count > 0){
                 $status = 1;//1为会员
             }else{

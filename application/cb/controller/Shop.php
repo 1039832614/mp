@@ -30,7 +30,8 @@ class Shop extends Bby
 				->field('company,photo,about,serphone,lng,lat,address')
 				->where('s.id',$sid)
 				->find();
-		
+		//增加维修厂的关注度数
+		Db::table('cs_shop_set')->where('sid',$sid)->setInc('follow');
 		$data['photo'] = str_replace(['\\'], ["/"], $data['photo']);
 		$data['photo'] = json_decode($data['photo'],true);
 		

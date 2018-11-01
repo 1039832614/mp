@@ -282,10 +282,10 @@ class Center extends Bby
 	{
 		$uid = input('get.uid');
 		$data = Db::table('u_user')->field('name,phone')->where('id',$uid)->find();
-		if(!empty($data['name']) && !empty($data['phone'])){
+		if($data){
 			$this->result($data,1,'获取成功');
 		}else{
-			$this->result($data,0,'暂无信息');
+			$this->result('',0,'暂无信息');
 		}
 	}
 
