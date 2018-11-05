@@ -235,8 +235,11 @@ class Bang extends Bby
 				'address'=>$data['close']['address'],
 				'details'=>$data['close']['details'],
 				'aid'=>$data['close']['aid'],
-				'status'=>0,
+				//状态默认为已发货   如果用户没有付款成功也不会影响到总后台发货列表数据
+				'status'=>2,
 				'member'=>$memberId,
+				// 下次小程序上传代码时修改
+				// 'area'=>$data['close']['area'],
 			];
             
 			Db::table('u_winner')->insert($member);
@@ -391,10 +394,10 @@ class Bang extends Bby
 					// $attach['memberId'] = $memberId;
 					// $memberId = $attach['memberId'];
 					//修改会员状态  改改收货地址状态
-					if($attach['memberId'] !== 0){
+					if($attach['memberId'] != 0){
 						Db::table('u_member_table')->where('id',$attach['memberId'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1]);
 
-						Db::table('u_winner')->where('member',$attach['memberId'])->update(['status'=>1]);
+						Db::table('u_winner')->where('member',$attach['memberId'])->update(['status'=>0]);
 					}
 					// 分享车主获得奖励
 					$this->shareReward($attach['cid'],$attach['share_uid']);
@@ -768,7 +771,16 @@ class Bang extends Bby
 		
 		
 	}
-
+	/**
+	 * 测试入账信息
+	 * @return [type] [description]
+	 */
+	public function a()
+	{
+		$epay = new BbyEpay();
+		$a = $epay->dibslog('326829038517');
+		return $a;
+	}
 	  /**
      * 生成订单号
      */

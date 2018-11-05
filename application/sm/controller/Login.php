@@ -502,6 +502,37 @@ class Login extends Sm
 	            $this->result('',0,'暂无数据');
 	        }
         }
-        
+	}
+	/**
+	 * 获取用户被取消合作的信息
+	 * @return [type] [description]
+	 */
+	public function getRejectStatus()
+	{
+		$uid = input('post.uid');
+		$person_rank = Db::table('sm_user')
+						->where('id',$uid)
+						->value('person_rank');
+		$info = Db::table('sm_area')
+					->where([
+						'sm_id' => $uid,
+						'sm_mold' => 2 //取消合作的
+					])
+					->order('id desc')
+					->limit(1)
+					->field('id,reason,FROM_UNIXTIME(audit_time) as audit_time,audit_person')
+					->find();
+				// return $info ;die();
+		if($person_rank == 0 && $info) {
+			$cancel = Db::table('sm_apply_cancel')
+						->where('sid',$info['sid'])
+						->field('cancel_reason')
+						->find();
+			$info['title'] = '您已被总后台取消合作';
+			$info['bottom_bar'] = '点击确认后重新注册';
+			$this->result($info,1,'获取成功');
+		} else {
+			$this->result('',0,'暂无数据');
+		}
 	}
 }

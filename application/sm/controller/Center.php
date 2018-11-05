@@ -24,13 +24,19 @@ class Center extends Sm
 		$data = input('post.');
 		$uid = $data['uid'];
 		unset($data['uid']);
-		$res = Db::table('sm_user')
-				->where('id',$uid)
-				->update($data);
-		if($res !== false){
-			$this->result('',1,'修改成功');
+		$validate = validate('Alter');
+		if($validate->check($data)){
+
+			$res = Db::table('sm_user')
+					->where('id',$uid)
+					->update($data);
+			if($res !== false){
+				$this->result('',1,'修改成功');
+			} else {
+				$this->result('',0,'修改失败');
+			}
 		} else {
-			$this->result('',0,'修改失败');
+			$this->result('',0,$validate->getError());
 		}
 	}
 }
