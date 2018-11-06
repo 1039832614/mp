@@ -296,8 +296,8 @@ class Turntable extends Bby
 					->where('id',$uid)
 					->value('open_id');
 		$epay = new BbyEpay();
-		$epay->dibs($trade_no,$openid,1*100,'幸运大转盘获得金额');//测试金额
-		// $epay->dibs($trade_no,$openid,$money*100,'幸运大转盘获得金额');
+		// $epay->dibs($trade_no,$openid,1*100,'幸运大转盘获得金额');//测试金额
+		$epay->dibs($trade_no,$openid,$money*100,'幸运大转盘获得金额');
 		$max_id = Db::table('cs_gift')
 						->where('uid',$uid)
 						->order('id desc')

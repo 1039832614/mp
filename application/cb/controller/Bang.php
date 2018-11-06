@@ -7,6 +7,7 @@ use Msg\Sms;
 use Epay\BbyEpay;
 use Config;
 use think\facade\Log;
+use think\facade\Cache;
 /**
 * 邦保养操作
 */
@@ -19,8 +20,8 @@ class Bang extends Bby
 	{
 		$this->wx = new Wx();
 	}
-    
 
+    
     /**
      * 会员剩余次数
      * 
@@ -178,10 +179,10 @@ class Bang extends Bby
 		// 车牌字母大写
 		$data['plate'] = input('post.plate','','strtoupper');
 		// // 判断该车牌和车型是否已被注册
-		// $car_cate_id = Db::table('u_card')->where(['plate'=>$data['plate']])->value('car_cate_id');
-		// if(!empty($car_cate_id)){
-		// 	if($car_cate_id !== $data['car_cate_id']) $this->result('',0,'该车牌已绑定其他车型');
-		// }
+		$car_cate_id = Db::table('u_card')->where(['plate'=>$data['plate']])->value('car_cate_id');
+		if(!empty($car_cate_id)){
+			if($car_cate_id !== $data['car_cate_id']) $this->result('',0,'该车牌已绑定其他车型');
+		}
 		// 系统订单号
 	    $data['trade_no'] = $this->wx->createOrder();
 	    // 剩余次数与购卡次数相同
@@ -234,12 +235,12 @@ class Bang extends Bby
 				'phone'=>$data['close']['phone'],
 				'address'=>$data['close']['address'],
 				'details'=>$data['close']['details'],
-				'aid'=>$data['close']['aid'],
+				// 'aid'=>$data['close']['aid'],
 				//状态默认为已发货   如果用户没有付款成功也不会影响到总后台发货列表数据
 				'status'=>2,
 				'member'=>$memberId,
 				// 下次小程序上传代码时修改
-				// 'area'=>$data['close']['area'],
+				'area'=>$data['close']['area'],
 			];
             
 			Db::table('u_winner')->insert($member);
@@ -247,13 +248,6 @@ class Bang extends Bby
 			$memberId = 0;
 		}
 		unset($data['close']);
-		// 查询此用户是否为会员 
-		// 写在此处，当用户掉起支付没有付款时，也减去次数了
-		// $count = Db::table('u_member_table')->where('uid',$data['uid'])->where('pay_time','>',0)->where('end_time','>',date('Y-m-d H:i:s'))->order('id desc')->limit(1)->count();   //12.24
-		// if($count > 0){
-		// 	//减去用户享受折扣价次数
-		// 	Db::table('u_member_table')->where('uid',$data['uid'])->where('pay_time','>',0)->where('end_time','>',date('Y-m-d H:i:s'))->order('id desc')->setDec('pay_time');
-		// }
 
     	$lastId = Db::table('u_card')->insertGetId($data);
     	if($lastId){
@@ -345,75 +339,93 @@ class Bang extends Bby
 	 * 微信支付回调
 	 */
 	public function notify(){
-		
-		$xml =  file_get_contents("php://input");
-		$data = $this->wx->xmlToArray($xml);
-		$data_sign = $data['sign'];
-		unset($data['sign']);
-		// Db::startTrans();
-		$sign = $this->wx->getSign($data);
-			// 判断签名是否正确  判断支付状态
-			if (($sign===$data_sign) && ($data['return_code']=='SUCCESS') && ($data['result_code']=='SUCCESS')){
-					$result = $data;
-					$attach = $this->wx->getStrVal($data['attach']);
+		try {
 
-					// 更新购卡状态
-					Db::table('u_card')->where('id',$attach['cid'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1,'card_reward'=>10]);
-					// 获取用户的卡类型
-					$card_type = Db::table('u_card')->where('id',$attach['cid'])->value('card_type');
-					if($card_type == 1){
-						Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('card_month')->update();
-					}else{
-						// 店铺售卡数增加
-						Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('balance',10)->inc('card_month')->update();
-					}
-					
-					//获取当前用户的uid xjm 2018.10.27
-					$uid = Db::table('u_card')
-							->where('id',$attach['cid'])
-							->value('uid');
-					//查询此用户是否是会员 xjm 2018.10.27
-					$count = Db::table('u_member_table')
+			$xml =  file_get_contents("php://input");
+			$data = $this->wx->xmlToArray($xml);
+			$data_sign = $data['sign'];
+			unset($data['sign']);
+			// Db::startTrans();
+			$sign = $this->wx->getSign($data);
+				// 判断签名是否正确  判断支付状态
+				if (($sign===$data_sign) && ($data['return_code']=='SUCCESS') && ($data['result_code']=='SUCCESS')){
+						$attach = $this->wx->getStrVal($data['attach']);
+						if(time() - Cache::get('card_time'.$attach['cid']) < 3600){
+							exit;
+							// 返回状态给微信服务器
+							echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+							// exit;
+							return $result;
+						}
+						// 
+						Cache::set('card_time'.$attach['cid'],time());
+						$result = $data;
+						
+
+						// 更新购卡状态
+						Db::table('u_card')->where('id',$attach['cid'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1,'card_reward'=>10]);
+						// 获取用户的卡类型
+						$card_type = Db::table('u_card')->where('id',$attach['cid'])->field('card_type,card_price')->find();
+
+						if($card_type['card_type'] == 1){
+							Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('card_month')->update();
+						}else{
+							// 店铺售卡数增加
+							Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('balance',10)->inc('card_month')->update();
+						}
+						
+						//获取当前用户的uid xjm 2018.10.27
+						$uid = Db::table('u_card')
+								->where('id',$attach['cid'])
+								->value('uid');
+						//查询此用户是否是会员 xjm 2018.10.27
+						$count = Db::table('u_member_table')
+								->where('uid',$uid)
+								->where('pay_time','>',0)
+								->where('end_time','>',date('Y-m-d H:i:s'))
+								->order('id desc')
+								->limit(1)
+								->count();
+						//xjm 2018.10.27
+						if($count > 0){
+							//减去用户享受折扣价次数
+							Db::table('u_member_table')
 							->where('uid',$uid)
 							->where('pay_time','>',0)
 							->where('end_time','>',date('Y-m-d H:i:s'))
 							->order('id desc')
-							->limit(1)
-							->count();
-					//xjm 2018.10.27
-					if($count > 0){
-						//减去用户享受折扣价次数
-						Db::table('u_member_table')
-						->where('uid',$uid)
-						->where('pay_time','>',0)
-						->where('end_time','>',date('Y-m-d H:i:s'))
-						->order('id desc')
-						->setDec('pay_time');
-					}
-					// print_r($attach['memberId']);exit;
-					// $attach['memberId'] = $memberId;
-					// $memberId = $attach['memberId'];
-					//修改会员状态  改改收货地址状态
-					if($attach['memberId'] != 0){
-						Db::table('u_member_table')->where('id',$attach['memberId'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1]);
+							->setDec('pay_time');
+						}
+						//修改会员状态  改改收货地址状态
+						if($attach['memberId'] != 0){
+							Db::table('u_member_table')->where('id',$attach['memberId'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1]);
 
-						Db::table('u_winner')->where('member',$attach['memberId'])->update(['status'=>0]);
+							Db::table('u_winner')->where('member',$attach['memberId'])->update(['status'=>0]);
+						}
+						// 分享车主获得奖励
+						$this->shareReward($attach['cid'],$attach['share_uid']);
+
+						// 给运营商服务经理市级代理售卡奖励
+							
+						$this->agentBlance($attach['sid'],$uid,$attach['cid'],$card_type['card_price'],$result);
+						// 返回状态给微信服务器
+						echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+						// exit;
+						return $result;
+					}else{
+				
+						$result = false;
 					}
-					// 分享车主获得奖励
-					$this->shareReward($attach['cid'],$attach['share_uid']);
-					// 返回状态给微信服务器
-					echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// exit;
-					return $result;
-				}else{
-			
-					$result = false;
-				}
-			
+				
+				// 返回状态给微信服务器
+				echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+				// exit;
+				return $result;
+			} catch (Exception $e) {
 			// 返回状态给微信服务器
 			echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-			// exit;
 			return $result;
+		}
 	
 	}
 
@@ -422,17 +434,8 @@ class Bang extends Bby
 	 * @param  [type] $share_uid [description]
 	 * @return [type]            [description]
 	 */
-	public function agentBlance()
+	public function agentBlance($sid,$uid,$cid,$total,$result)
 	{
-		// 维修厂sid  用户id 购卡总金额total
-		$sid = input('post.sid');
-		$uid = input('post.uid');
-		$total = input('post.total');
-		$b = input('post.data');
-		$a = 'eb8d41d8cd98f003fa';
-		if($a != $b){
-			$this->result('',0,'您没有权限访问,请联系管理员');
-		}
 		// 查询用户本次购卡id
 		$cid = Db::table('u_card')->where(['sid'=>$sid,'uid'=>$uid])->order('id desc')->limit(1)->value('id');
 		// print_r($cid);exit;
@@ -449,9 +452,11 @@ class Bang extends Bby
 
         $agent_set = Db::table('cs_shop')->where('id',$sid)->value('aid');
         $profit = Db::table('ca_agent_set')->where('aid',$agent_set)->value('profit');
-		if(empty($profit)){
-			$result = false;
-		}
+		// if(empty($profit)){
+		// 	// 返回状态给微信服务器
+		// 	echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+		// 	return $result;
+		// }
 		$money = $total*$profit/100;
 		//增加运营商售卡数量
 		$ca_inc = Db::table('ca_agent')->where('aid',$agent_set)->inc('balance',$money)->inc('sale_card')->update();
@@ -469,9 +474,15 @@ class Bang extends Bby
 		$ca_inc_log = Db::table('ca_income')
 						->strict(false)
 						->insert($arr_inc);
-
+		// 判断该运营商是否存在
+		$agent_isset = Db::table('ca_agent')->where('aid',$agent_set)->count();
+		// if($agent_isset <= 0){
+		// 	// 返回状态给微信服务器
+		// 	echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+		// 	return $result;
+		// }
 		// 查看运营商是否有市级代理
-		$gid = Db::table('ca_agent')->where('aid',$agent_set)->value('gid');
+		$gid = Db::table('ca_agent')->where('aid',$agent_set)->field('gid')->find();
 		// exit;
 		// 获取运营商所供应地区的市级id
 		$city = $this->agentSm($agent_set);
@@ -512,7 +523,7 @@ class Bang extends Bby
 
 		// 加入市级代理收入记录
 		// 获取市级代理收入
-		if($gid !== 0){
+		if($gid['gid'] !== 0){
 			$income = $this->munInc($agent_set,$total);
 			$supply = [
 				'carmodel' => $card_info['car_cate_id'],// 车型
@@ -541,15 +552,31 @@ class Bang extends Bby
 				// if($ca_inc_log && $su_income && $sm == ture){
 				// xjm 2018.10.27 15:28
 				if($ca_inc_log && $su_income && $sm == true){
-					$this->result('',1,'成功');
+					// // $this->result('',1,'成功');
+					// // 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return true;
 				}else{
-					$this->result('',0,'失败');
+					// $this->result('',0,'失败');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return false;
 				}
 			}else{
 				if($ca_inc_log && $su_income){
-					$this->result('',1,'成功');
+					// $this->result('',1,'成功');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return true;
 				}else{
-					$this->result('',0,'失败');
+					// $this->result('',0,'失败');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return false;
 				}
 			}	
 			
@@ -563,15 +590,31 @@ class Bang extends Bby
 				// 获取服务经理分佣
 				$sm = $this->smReward($sid,$agent_set,$total,$cid);
 				if($ca_inc_log && $sm == true){
-					$this->result('',1,'成功');
+					// $this->result('',1,'成功');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return true;
 				}else{
-					$this->result('',0,'失败');
+					// $this->result('',0,'失败');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return false;
 				}
 			}else{
 				if($ca_inc_log){
-					$this->result('',1,'成功');
+					// $this->result('',1,'成功');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return true;
 				}else{
-					$this->result('',0,'失败');
+					// $this->result('',0,'失败');
+					// 返回状态给微信服务器
+					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+					// return $result;
+					return false;
 				}
 			}	
 			
@@ -771,16 +814,7 @@ class Bang extends Bby
 		
 		
 	}
-	/**
-	 * 测试入账信息
-	 * @return [type] [description]
-	 */
-	public function a()
-	{
-		$epay = new BbyEpay();
-		$a = $epay->dibslog('326829038517');
-		return $a;
-	}
+
 	  /**
      * 生成订单号
      */

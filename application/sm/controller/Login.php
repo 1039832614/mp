@@ -93,7 +93,7 @@ class Login extends Sm
 		$content="您的验证码是：【".$code."】。请不要把验证码泄露给其他人。";
 		$a = $this->smsVerify($phone,$content,$code);
 		if($a == '提交成功'){
-			$this->result('',1,'提交成功');
+			$this->result('',1,'发送成功');
 		} else {
 			$this->result('',0,'该手机号今日获取验证码次数已达上限');
 		}
@@ -355,7 +355,7 @@ class Login extends Sm
 						'id' => $data['uid']
 					])
 					->find();
-		// 获取用户的开发奖励余额总数
+		// 获取用户的开发奖励余额(即可提现余额)总数
 		$income = Db::table('sm_income')
 					->where([
 						'sm_id'=>$data['uid'],
@@ -525,14 +525,18 @@ class Login extends Sm
 				// return $info ;die();
 		if($person_rank == 0 && $info) {
 			$cancel = Db::table('sm_apply_cancel')
-						->where('sid',$info['sid'])
+						->where('sid',$info['id'])
 						->field('cancel_reason')
 						->find();
-			$info['title'] = '您已被总后台取消合作';
-			$info['bottom_bar'] = '点击确认后重新注册';
+			if($cancel){
+				$info['title'] = '您的取消合作已通过';
+			} else {
+				$info['title'] = '您已被总后台取消合作';
+			}
+			$info['bottom_bar'] = '点击后重新注册';
 			$this->result($info,1,'获取成功');
 		} else {
-			$this->result('',0,'暂无数据');
+			$this->result('',0,'暂无取消合作');
 		}
 	}
 }

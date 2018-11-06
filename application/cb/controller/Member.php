@@ -127,7 +127,7 @@ class Member extends Bby
             $a += $b;
             $b = substr($b, -2,2);
         }
-        return 'zd'.$a.$b;
+        return $a.$b;
     }
 
 
