@@ -173,6 +173,9 @@ class My extends Sm
                     // 查询运营商下的维修厂数量
                     $list[$key]['count'] = Db::table('cs_shop')
                         ->where('aid',$list[$key]['aid'])
+                        ->where([
+                            'audit_status' => [2,6]
+                        ])
                         ->count();
 //                    unset($list[$key]['area']);
                 }

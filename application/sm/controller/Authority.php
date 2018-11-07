@@ -14,6 +14,29 @@ class Authority extends Sm
         $this->wx = new Wx();
         $this->uid = input('post.uid');
     }
+    /**
+     * 运营总监的区域列表
+     * @return [type] [description]
+     */
+    public function headerAreaList()
+    {
+        // return $this->uid;
+        $list = Db::table('sm_area')
+                ->alias('a')
+                ->join('co_china_data d','a.area = d.id')
+                ->where([
+                    'sm_id' => $this->uid,
+                    'sm_type' => 2,
+                    'is_exits' => 1
+                ])
+                ->field('a.id,d.name as province,audit_status,sm_profit,sm_status')
+                ->select();
+        if($list) {
+            $this->result($list,1,'获取数据成功');
+        } else {
+            $this->result('',0,'暂无数据');
+        }
+    }
     // 服务经理的 服务区域列表
     public function serviceAreaList()
     {
@@ -146,8 +169,15 @@ class Authority extends Sm
                 ->limit(1)
                 ->order('create_time DESC')
                 ->find();
-//        var_dump($list);exit;
-        $divide = Db::table('am_sm_set')->where('status',1)->value('maid');
+        $person_rank = Db::table('sm_user')
+                        ->where('id',$this->uid)
+                        ->value('person_rank');
+        if($person_rank == 1 || $person_rank == 4){
+            $divide = Db::table('am_sm_set')->where('status',1)->value('maid');
+        } else {
+            $divide = Db::table('am_sm_set')->where('status',2)->value('maid');
+        }
+        
         if (empty($list) && empty($area)){
             $model = new Login();
             $data['trade_no'] = $this->wx->createOrder();
@@ -233,7 +263,6 @@ class Authority extends Sm
             $this->result('',0,'修改失败');
         }
     }
-
     // 新增区域 查看驳回理由
     public function rejectionDetail()
     {
@@ -371,7 +400,10 @@ class Authority extends Sm
                 ->order('id')
                 ->limit(1)
                 ->find();
-        if($list) {
+        $count = Db::table('sm_apply_cancel')
+                    ->where('sid',$list['id'])
+                    ->find();
+        if($list && $count < 0) {
             $this->result($list,1,'您的'.$list['city'].'区域已被总后台取消');
         } else {
             $this->result('',0,'暂无数据');
