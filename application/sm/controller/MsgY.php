@@ -22,7 +22,7 @@ class MsgY extends Sm
 		if($person_rank == 1 || $person_rank == 4) {
 			//是服务经理
 			//更新最新消息
-			$mids = $Msg->getUrMsg(11,'sm_msg_f',$uid);
+			$mids = $Msg->getUrMsg(13,'sm_msg_f',$uid);
 			//获取未读消息
 			$data = Db::table('sm_msg_f')
 					->alias('f')

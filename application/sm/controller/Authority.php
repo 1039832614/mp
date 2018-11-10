@@ -170,25 +170,29 @@ class Authority extends Sm
                 ->order('create_time DESC')
                 ->find();
         $person_rank = Db::table('sm_user')
-                        ->where('id',$this->uid)
+                        ->where('id',$data['sm_id'])
                         ->value('person_rank');
         if($person_rank == 1 || $person_rank == 4){
-            $divide = Db::table('am_sm_set')->where('status',1)->value('maid');
+            $divide = Db::table('am_sm_set')
+                        ->where('status',1)
+                        ->value('maid');
         } else {
-            $divide = Db::table('am_sm_set')->where('status',2)->value('maid');
+            $divide = Db::table('am_sm_set')
+                        ->where('status',2)
+                        ->value('maid');
         }
         
         if (empty($list) && empty($area)){
             $model = new Login();
             $data['trade_no'] = $this->wx->createOrder();
             $arr = [
-                'area' => $data['area'],
-                'money' => $data['money'],
-                'pay_status' => 0,
-                'trade_no' => $data['trade_no'],
+                'area'        => $data['area'],
+                'money'       => $data['money'],
+                'pay_status'  => 0,
+                'trade_no'    => $data['trade_no'],
                 'create_time' => date('Y-m-d H:i:s',time()),
-                'sm_id' => $data['sm_id'],
-                'sm_profit' => $divide,
+                'sm_id'       => $data['sm_id'],
+                'sm_profit'   => $divide,
             ];
             $lastId = Db::table('sm_area')->insertGetId($arr);
             $openid = $data['openid'];
@@ -204,23 +208,26 @@ class Authority extends Sm
             }
         }else if(empty($area)){
            $arr = [
-               'area' => $data['area'],
-               'sm_id' => $data['sm_id'],
-               'money' => $data['money'],
-               'pay_status' => $list['pay_status'],
-               'trade_no' => $list['trade_no'],
-               'transaction_id'=> $list['transaction_id'],
-               'pay_time'=> $list['pay_time'],
-               'create_time'=> date('Y-m-d H:i:s',time()),
-               'audit_status'=> 0,
-               'sm_status'=> $list['sm_status'],
-               'sm_profit'=> $divide,
-               'sm_mold'=> $list['sm_mold'],
-               'sm_type' => $list['sm_type'],
-               'if_read'=> $list['if_read'],
+               'area'           => $data['area'],
+               'sm_id'          => $data['sm_id'],
+               'money'          => $data['money'],
+               'pay_status'     => $list['pay_status'],
+               'trade_no'       => $list['trade_no'],
+               'transaction_id' => $list['transaction_id'],
+               'pay_time'       => $list['pay_time'],
+               'create_time'    => date('Y-m-d H:i:s',time()),
+               'audit_status'   => 0,
+               'sm_status'      => $list['sm_status'],
+               'sm_profit'      => $divide,
+               'sm_mold'        => $list['sm_mold'],
+               'sm_type'        => $list['sm_type'],
+               'if_read'        => $list['if_read'],
            ];
            // 如果有被驳回的订单则把订单修改成为重新向总后台进行审核  2018-10-9 cjx
-           $ret = Db::table('sm_area')->where('id',$data['id'])->strict(false)->update($arr);
+           $ret = Db::table('sm_area')
+                    ->where('id',$data['id'])
+                    ->strict(false)
+                    ->update($arr);
            if ($ret){
                $this->result('',2,'新增区域成功,等待后台审核');
            }else{

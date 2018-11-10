@@ -124,8 +124,8 @@ class Login extends Sm
 		$data = input('post.');
 		$validate = validate('Phone');
 		if($validate->check($data)){
-			$check = $this->sms->compare($data['phone'],$data['code']);
-			if($check){
+			// $check = $this->sms->compare($data['phone'],$data['code']);
+			// if($check){
 				$res = Db::table('sm_user')
 						->where('id',$data['uid'])
 						->update(['phone' => $data['phone']]);
@@ -134,9 +134,9 @@ class Login extends Sm
 				} else {
 					$this->result('',0,'更新失败');
 				}
-			} else {
-				$this->result('',0,'手机验证码无效或已过期');
-			}
+			// } else {
+			// 	$this->result('',0,'手机验证码无效或已过期');
+			// }
 		} else {
 			$this->result('',0,$validate->getError());
 		}
@@ -149,6 +149,12 @@ class Login extends Sm
 	{
 		$data = input('post.');
 		$validate = validate('Reg');
+		if($data['joinStatus'] == 1) {
+			//加盟
+			if(empty($data['area'])){
+				$this->result('',0,'请选择区域');
+			}
+		}
 		if($validate->check($data)){
 			if($data['bank_code'] == 0) {
 				$this->result('',0,'请重新选择开户行');
@@ -156,12 +162,12 @@ class Login extends Sm
 			Db::startTrans();
 			//构建用户入库信息
 			$arr = [
-				'bank_code' => $data['bank_code'],//开户行编码
-				'bank_branch' => $data['bank_branch'],//开户分行
-				'bank_name' => $data['bank_name'],//开户名
-				'name' => $data['name'],//姓名
-				'account' => $data['account'],
-				'reg_time' => time()
+				'bank_code'   => $data['bank_code'],   //开户行编码
+				'bank_branch' => $data['bank_branch'], //开户分行
+				'bank_name'   => $data['bank_name'],   //开户名
+				'name'        => $data['name'],        //姓名
+				'account'     => $data['account'],
+				'reg_time'    => time()
 			];
 			$res = Db::table('sm_user')
 						->where('id',$data['uid'])
@@ -198,9 +204,9 @@ class Login extends Sm
 					 ->where([
 					 	'id' => $data['uid']
 					 ])
+					 ->where('audit_status','<>',2)
 					 ->count();
 			//如果用户是首次注册付款，则更改用户身份信息
-//					if($count < 1) {
 			 if($count <= 1) {
 				if($data['sm_status'] == 5){
 					Db::table('sm_user')
@@ -214,19 +220,28 @@ class Login extends Sm
 			}
 			// 系统订单号
 			$data['trade_no'] = $this->wx->createOrder();
-			//构建区域入库信息
-			$area = [
-				'area' => $data['area'],
-				'trade_no' => $data['trade_no'],
-				'sm_id' => $data['uid'],
-				'sm_type' => $sm_type,
-				'share_id' => $data['share_id'], 
-				'sm_profit' => $data['sm_profit']
-			];
-			$lastId = Db::table('sm_area')
-						->insertGetId($area);
-			$openid = $data['openid'];
-			if($res !== false && $lastId){
+			if($data['joinStatus'] == 1) {
+				//判断用户身份
+				if($data[''])
+				//构建区域入库信息
+				$area = [
+					'area'      => $data['area'],
+					'trade_no'  => $data['trade_no'],
+					'sm_id'     => $data['uid'],
+					'sm_type'   => $sm_type,
+					'share_id'  => $data['share_id'], 
+					'sm_profit' => $data['sm_profit']
+				];
+				$lastId = Db::table('sm_area')
+							->insertGetId($area);
+				// $openid = $data['openid']; 
+			}
+			if($data['joinStatus'] == 0) {
+				$up = Db::table('sm_user')
+						->where('id',$data['uid'])
+						->update(['person_rank'=>1,'joinStatus'=>0]);
+			}
+			if($res !== false){
 				Db::commit();
 				// $result = $this->weixinapp($lastId,$openid);
 				// $result['trade_no'] = $data['trade_no'];
@@ -466,42 +481,45 @@ class Login extends Sm
 		$uid = input('post.uid');
 		$list = Db::table('sm_area')
             ->where('sm_id',$uid)
-            ->where('if_read',0)
             ->where('audit_status','<>',0)
-            ->field('id,audit_status')
-            ->limit(1)
-            ->order('id desc')
+            ->field('id,audit_status,if_read')
+            ->limit(1,1)
             ->find();
-        //查看该区域是否是用户取消合作的区域，如果是则不在注册弹窗中出现
-        $count = Db::table('sm_apply_cancel')
-        			->where('sid',$list['id'])
-        			->count();
-        if($count > 0) {
-        	$this->result('',0,'暂无数据');
-        } else {
-        	$person_rank = Db::table('sm_user')
-        				->where('id',$uid)
-        				->value('person_rank');
-	        if($person_rank == 5 || $person_rank ==2) {
-	        	if($list['audit_status'] == 2) {
-	        		$msg = '您的注册申请已被驳回，请在“我的->我的区域”中重新修改';
-	        	} else {
-	        		$msg = '您的注册申请已通过';
-	        	}
-	        	
+        if($list['if_read'] == 0) {
+        	//查看该区域是否是用户取消合作的区域，如果是则不在注册弹窗中出现
+	        $count = Db::table('sm_apply_cancel')
+	        			->where('sid',$list['id'])
+	        			->count();
+	        if($count > 0) {
+	        	$this->result('',0,'暂无数据');
 	        } else {
-	        	if($list['audit_status'] == 2) {
-	        		$msg = '您的申请被驳回了，请重新提交';
-	        	} else {
-	        		$msg = '您的注册申请已通过';
-	        	}
+	        	$person_rank = Db::table('sm_user')
+	        				->where('id',$uid)
+	        				->value('person_rank');
+		        if($person_rank == 5 || $person_rank ==2) {
+		        	if($list['audit_status'] == 2) {
+		        		$msg = '您的注册申请已被驳回，请在“我的->我的区域”中重新修改';
+		        	} else {
+		        		$msg = '您的注册申请已通过';
+		        	}
+		        	
+		        } else {
+		        	if($list['audit_status'] == 2) {
+		        		$msg = '您的申请被驳回了，请重新提交';
+		        	} else {
+		        		$msg = '您的注册申请已通过';
+		        	}
+		        }
+		        if ($list){
+		            $this->result($list,1,$msg);
+		        }else{
+		            $this->result('',0,'暂无数据');
+		        }
 	        }
-	        if ($list){
-	            $this->result($list,1,$msg);
-	        }else{
-	            $this->result('',0,'暂无数据');
-	        }
+        } else {
+        	$this->result('',0,'暂无数据');
         }
+      
 	}
 	/**
 	 * 获取用户被取消合作的信息

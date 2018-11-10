@@ -169,6 +169,61 @@ class Bang extends Bby
 		}
 	}
 
+
+	/**
+	 * 判断用户的车牌号 或者车类型有无重复
+	 * @return [type] [description]
+	 */
+	public function plate()
+	{
+		$uid = input('post.uid');
+		$car_cate_id = input('post.car_cate_id');
+		$plate = input('post.plate','','strtoupper');
+
+		if(!$uid || !$car_cate_id || !$plate){
+			$this->result('',0,'缺少必要的参数');
+		}
+		// 判断该车牌和车型是否已被注册
+		$user_card = Db::table('u_card')->where('plate',$plate)->field('car_cate_id,uid')->find();
+		// print_r($user_card);exit;
+		
+		// 判断该用户之前是否有购买过邦保养卡
+		// 根据用户id 获取之前用户购买的邦保养卡
+		if(!empty($user_card)){
+			if($user_card['uid'] != $uid){
+				$this->result('',0,'该车牌已被其他车主绑定');
+			}
+
+			if($user_card['car_cate_id'] != $car_cate_id){
+				$this->result('',0,'该车牌已绑定其他车型');
+			} 
+		}
+
+		// 查看车服管家是否有人完善了该车牌的信息
+		$car_plate = Db::table('cb_user bu')
+					->join('u_user uu','bu.unionId = uu.unionId')
+					->where('bu.plate',$plate)
+					->field('bu.car_cate_id,uu.id')
+					->find();
+
+		// 判断该用户之前是否有购买过邦保养卡
+		// 根据用户id 获取之前用户购买的邦保养卡
+		if(!empty($car_plate)){
+			if($car_plate['id'] != $uid){
+				$this->result('',0,'该车牌已被其他车主绑定');
+			}
+
+			if($car_cate_id != $car_plate['car_cate_id']){
+				$this->result('',0,'该车牌已绑定其他车型');
+			} 
+		}
+
+		$this->result('',1,'可正常购买');
+	}
+
+
+
+
 	/**
 	 * 微信支付
 	 */
@@ -178,11 +233,6 @@ class Bang extends Bby
 		$data = input('post.');
 		// 车牌字母大写
 		$data['plate'] = input('post.plate','','strtoupper');
-		// // 判断该车牌和车型是否已被注册
-		$car_cate_id = Db::table('u_card')->where(['plate'=>$data['plate']])->value('car_cate_id');
-		if(!empty($car_cate_id)){
-			if($car_cate_id !== $data['car_cate_id']) $this->result('',0,'该车牌已绑定其他车型');
-		}
 		// 系统订单号
 	    $data['trade_no'] = $this->wx->createOrder();
 	    // 剩余次数与购卡次数相同
@@ -260,6 +310,10 @@ class Bang extends Bby
     		$this->result($result,0,'发起支付异常');
     	}
     }
+
+
+
+
 
 	/**
      * 微信小程序接口
@@ -494,7 +548,8 @@ class Bang extends Bby
 						'audit_status'=>1,//审核状态
 						'is_exits'=>1,//是否取消合作  1未取消  2取消
 						'sm_type'=>1,//1服务经理  2运营总监
-						'admin_raw'=>1//1管理奖励
+						'admin_raw'=>1,//1管理奖励
+						'sm_status'=>2,//身份状态为加盟状态
 					])
 					->where('sm_mold','<>',2)
 					->count();
@@ -679,7 +734,8 @@ class Bang extends Bby
 							->insert($arr);
 			if($res !== false) {
 				$epay = new BbyEpay();
-						$sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,$money*100,'售卡奖励分佣');
+						// $sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,$money*100,'售卡奖励分佣');
+				$sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,1*100,'售卡奖励分佣');
 				if($sm_yy_reward!==false) {
 					return true;
 				} else {
@@ -749,7 +805,8 @@ class Bang extends Bby
 					// print_r($sm_name);exit;
 					if($res !== false){
 						$epay = new BbyEpay();
-						$sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],$money*100,'服务经理售卡奖励分佣');
+						// $sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],$money*100,'服务经理售卡奖励分佣');
+						$sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],1*100,'服务经理售卡奖励分佣');
 						// return $sm_reward;die();
 					}
 					// 通过服务经理id 及 服务经理的地区判断服务经理该地区通过的时间

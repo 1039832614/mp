@@ -34,7 +34,6 @@ class Shop extends Bby
 		Db::table('cs_shop_set')->where('sid',$sid)->setInc('follow');
 		$data['photo'] = str_replace(['\\'], ["/"], $data['photo']);
 		$data['photo'] = json_decode($data['photo'],true);
-		
 		if($data){
 			$this->result($data,1,'获取数据成功');
 		}else{

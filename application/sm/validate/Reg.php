@@ -14,6 +14,6 @@ class Reg extends Validate
 		'bank_branch|银行分行' => 'require',
 		'bank_name|开户名' => 'require',
 		'account|银行卡号' => 'require',
-		'area|区域' => 'require',
+		// 'area|区域' => 'require',
 	];
 }
