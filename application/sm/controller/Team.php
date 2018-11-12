@@ -265,6 +265,7 @@ class Team extends Sm
 			$this->result('',0,'暂无数据');
 		}
 	}
+	
 	/**
 	 * 上传负责人正面照片
 	 * @return [type] [description]
@@ -273,6 +274,7 @@ class Team extends Sm
 	{
 		return $this->uploadImage('image','article','https://mp.ctbls.com');
 	}
+
 	/**
 	 * 上传二维码
 	 * @return [type] [description]
@@ -281,6 +283,7 @@ class Team extends Sm
 	{	
 		return $this->uploadImage('image','article','https://mp.ctbls.com');
 	}
+
 	/**
 	 * 更新团队二维码
 	 * @return [type] [description]

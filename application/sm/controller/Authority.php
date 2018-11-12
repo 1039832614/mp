@@ -198,10 +198,10 @@ class Authority extends Sm
             $openid = $data['openid'];
             if($lastId){
                 Db::commit();
-                // $result = $model->weixinapp($lastId,$openid);
-                // $result['trade_no'] = $data['trade_no'];
-                // $result['cid'] = $lastId;
-                $this->result('',1,'新增区域成功,等待后台审核');
+                $result = $model->weixinapp($lastId,$openid);
+                $result['trade_no'] = $data['trade_no'];
+                $result['cid'] = $lastId;
+                $this->result($result,1,'新增区域成功,等待后台审核');
             } else {
                 Db::rollback();
                 $this->result('',0,'发起支付异常');

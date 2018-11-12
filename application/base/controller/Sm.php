@@ -57,10 +57,10 @@ class Sm extends Base
         // 获取表单上传文件
         $file = request()->file($image);
         // 进行验证并进行上传
-        $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move( './uploads/worker/'.$path.'/');
+        $info = $file->validate(['size'=>3145728,'ext'=>'jpg,png,jpeg'])->move( './uploads/sm/'.$path.'/');
         // 上传成功后输出信息
         if($info){
-          $res = $host.'/uploads/worker/'.$path.'/'.$info->getSaveName();
+          $res = $host.'/uploads/sm/'.$path.'/'.$info->getSaveName();
           $res = stripcslashes($res);//替换反斜杠
           $this->result(['url'=>$res],1,'上传成功');
         }else{
