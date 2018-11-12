@@ -124,8 +124,8 @@ class Login extends Sm
 		$data = input('post.');
 		$validate = validate('Phone');
 		if($validate->check($data)){
-			// $check = $this->sms->compare($data['phone'],$data['code']);
-			// if($check){
+			$check = $this->sms->compare($data['phone'],$data['code']);
+			if($check){
 				$res = Db::table('sm_user')
 						->where('id',$data['uid'])
 						->update(['phone' => $data['phone']]);
@@ -134,9 +134,9 @@ class Login extends Sm
 				} else {
 					$this->result('',0,'更新失败');
 				}
-			// } else {
-			// 	$this->result('',0,'手机验证码无效或已过期');
-			// }
+			} else {
+				$this->result('',0,'手机验证码无效或已过期');
+			}
 		} else {
 			$this->result('',0,$validate->getError());
 		}

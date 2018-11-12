@@ -370,7 +370,8 @@ class Bang extends Bby
             'mch_id' => Config::get('mch_id'),
             'nonce_str' => $this->wx->getNonceStr(), 
             'body' => $data['cate_name'].'邦保养卡',  
-            'total_fee' => $data['card_price'],   // 10.24 修改金额
+            // 'total_fee' => $data['card_price'],   // 10.24 修改金额
+             'total_fee' => 1,  //测试金额，上线请改回。
             'openid' => $openid,
             'out_trade_no'=> $data['trade_no'], 
             'spbill_create_ip' => '127.0.0.1', 
