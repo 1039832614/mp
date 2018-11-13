@@ -32,7 +32,8 @@ class Team extends Sm
 				->join('sm_user u','u.id = t.sm_header_id')
 				->where([
 					'a.sm_id' => $this->uid,
-					'a.audit_status' => 1
+					'a.audit_status' => 1,
+					'a.pay_status' => 1
 				])
 				->where('a.sm_mold','<>',2)
 				->field('t.id as team_id,a.id,cd.name as province,team_name,u.name as header,t.sm_member_id')
@@ -62,7 +63,8 @@ class Team extends Sm
 					->where([
 						'sm_id'        => $this->uid,
 						'audit_status' => 1,
-						'sm_type'      => 2
+						'sm_type'      => 2,
+						'pay_status'   => 1
 					])
 					->where('sa.sm_mold','<>',2)
 					->field('sa.id,d.name as province,d.id as pro_id,sm_status')
@@ -75,7 +77,8 @@ class Team extends Sm
 				->alias('t')
 				->join('sm_area a','a.area = t.pro')
 				->where([
-					't.sm_header_id' => $this->uid
+					't.sm_header_id' => $this->uid,
+					'a.pay_status'   => 1
 				])
 				->where('a.sm_mold','<>',2)
 				->field('t.id as team_id,t.team_name,sm_member_id,t.pro as pro_id,sm_status')
@@ -94,6 +97,7 @@ class Team extends Sm
 					->leftJoin('u_card uc','uc.sid = ss.sid')
 					->where([
 						'a.audit_status' => 1,
+						'a.pay_status'   => 1,
 						'd.pid' => $team['pro_id']
 					])
 					->where('a.sm_mold','<>',2)
@@ -129,7 +133,8 @@ class Team extends Sm
 					->join('cs_shop_set s','s.county_id = d.id')
 					->where([
 						'a.audit_status' => 1,
-						'a.sm_id' => $sm_id
+						'a.pay_status'   => 1,
+						'a.sm_id'        => $sm_id
 					])
 					->where('a.sm_mold','<>',2)
 					->distinct(true)

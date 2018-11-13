@@ -39,7 +39,9 @@ class Login extends Sm
 		//判断用户是否存在
 		if($us) {
 			if($arr['open_id'] !== null && $arr['head_pic'] !== null && $arr['nick_name'] !== null && $arr['sex'] !== null){
-					Db::table('sm_user')->where('open_id',$safe['openid'])->update($arr);
+					Db::table('sm_user')
+						->where('open_id',$safe['openid'])
+						->update($arr);
 			}
 			$uid = $us['id'];
 			// 给前端传分享者id
@@ -56,20 +58,16 @@ class Login extends Sm
 		}
 		$this->result(['uid'=>$uid,'openid'=>$safe['openid'],'sm_status'=>$sm_status['person_rank'],'share_id'=>$sm_status['share_id']],1,'登录成功');
 	}
-	public function getcity(){
-		return $city = Db::table('co_china_data')
-						->select();
-	}
 	/**
 	 * 获取用户的openid和sessionkey
 	 * @param  [type] $code [微信小程序临时认证code]
 	 * @return [type]       [description]
 	 */
 	function getOpenId($code){
-		$appid = $this->appid;
+		$appid  = $this->appid;
 		$secret = $this->secret;
-		$url = "https://api.weixin.qq.com/sns/jscode2session?appid=$appid&secret=$secret&js_code=$code&grant_type=authorization_code";
-        $curl = curl_init();
+		$url    = "https://api.weixin.qq.com/sns/jscode2session?appid=$appid&secret=$secret&js_code=$code&grant_type=authorization_code";
+        $curl   = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_HEADER, 1);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
@@ -87,10 +85,10 @@ class Login extends Sm
 	 */
 	public function getCode()
 	{
-		$phone = input('post.phone');
-		$code = $this->apiVerify();
-		$content="您的验证码是：【".$code."】。请不要把验证码泄露给其他人。";
-		$a = $this->smsVerify($phone,$content,$code);
+		$phone   = input('post.phone');
+		$code    = $this->apiVerify();
+		$content = "您的验证码是：【".$code."】。请不要把验证码泄露给其他人。";
+		$a       = $this->smsVerify($phone,$content,$code);
 		if($a == '提交成功'){
 			$this->result('',1,'发送成功');
 		} else {
@@ -141,12 +139,12 @@ class Login extends Sm
 		}
 	}
 	/**
-	 * 上传二维码
+	 * 上传支付凭证
 	 * @return [type] [description]
 	 */
-	public function uploadVouchar()
+	public function uploadVoucher()
 	{	
-		return $this->uploadImage('image','vouchar','https://xmp.ctbls.com');
+		return $this->uploadImage('image','voucher','https://xmp.ctbls.com');
 	}
 	/**
 	 * 完善信息
@@ -160,6 +158,9 @@ class Login extends Sm
 		if($data['joinStatus'] == 1) {
 			if(empty($data['area'])){
 				$this->result('',0,'请选择区域');
+			}
+			if(empty($data['voucher'])){
+				$this->result('',0,'请上传支付凭证');
 			}
 		}
 		//实例化验证
@@ -298,7 +299,7 @@ class Login extends Sm
 		unset($data['sign']);
 		$sign = $this->wx->getSign($data);
 			// 判断签名是否正确  判断支付状态
-			if (($sign===$data_sign) && ($data['return_code']=='SUCCESS') && ($data['result_code']=='SUCCESS')){
+			if (($sign === $data_sign) && ($data['return_code']=='SUCCESS') && ($data['result_code']=='SUCCESS')){
 					$result = $data;
 					//给attach赋值
 					$attach = $this->wx->getStrVal($data['attach']);
@@ -445,16 +446,20 @@ class Login extends Sm
 						->where('id',$data['uid'])
 						->value('person_rank');
 		if($data['sm_status'] == 1 || $data['sm_status'] == 4) {
-			// $money = 1800;
-			$money = 0.01;
+			// $money = 6800;
+			$money   = 0.01;
+			$money_s = 30000;
+			$detail  = '线上支付'.$money.'元后，线下需交易'.$money_s.'元';
 		} else {
 			// $money = 6800;
-			$money = 0.01;
+			$money   = 0.01;
+			$money_s = 300000;
+			$detail  = '线上支付'.$money.'元后，线下需交易'.$money_s.'元';
 		}
 		if($info > 0) {
-			$this->result($money,1,'已支付：'.$money.'元');
+			$this->result(['money'=>$money,'detail'=>$detail],1,'已支付：'.$money.'元');
 		} else {
-			$this->result($money,0,'需支付:'.$money.'元');
+			$this->result(['money'=>$money,'detail'=>$detail],0,'端口费:'.$money.'元');
 		}
 	}
 	/**

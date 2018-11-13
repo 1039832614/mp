@@ -27,7 +27,8 @@ class Authority extends Sm
                 ->where([
                     'sm_id' => $this->uid,
                     'sm_type' => 2,
-                    'is_exits' => 1
+                    'is_exits' => 1,
+                    'pay_status' => 1
                 ])
                 ->field('a.id,d.name as province,audit_status,sm_profit,sm_status')
                 ->select();
@@ -44,6 +45,7 @@ class Authority extends Sm
             ->where('sm_id',$this->uid)
             ->where('sm_type',1)
             ->where('is_exits',1)
+            ->where('pay_status',1)
             ->where('sm_mold','<>',2)
             ->field('id,area,sm_mold,sm_profit,sm_status,audit_status')
             ->select();
@@ -86,7 +88,8 @@ class Authority extends Sm
         //获取所有被选择的省份
         $area = Db::table('sm_area')
                 ->where([
-                    'audit_status' => [0,1]
+                    'audit_status' => [0,1],
+                    'pay_status' => 1
                 ])
                 ->where('sm_mold','<>',2)
                 ->field('id,area')
@@ -117,7 +120,8 @@ class Authority extends Sm
                     ->join('sm_area a','a.area = d.id')
                     ->where([
                         'a.sm_id' => $data['share_id'],
-                        'a.audit_status' => [0,1]
+                        'a.audit_status' => [0,1],
+                        'a.pay_status' => 1
                     ])
                     ->where('a.sm_mold','<>',2)
                     ->field('d.id,d.code,d.name,d.pid,d.sort')
@@ -156,6 +160,7 @@ class Authority extends Sm
         // 查找是否有已付费但被驳回
         $list = Db::table('sm_area')
             ->where('sm_id',$data['sm_id'])
+            ->where('pay_status',1)
             ->where('audit_status',2)
             ->where('is_exits',1)
             ->limit(1)
@@ -165,6 +170,7 @@ class Authority extends Sm
         $area = Db::table('sm_area')
                 ->where('sm_id',$data['sm_id'])
                 ->where('audit_status',0)
+                ->where('pay_status',1)
                 ->where('is_exits',1)
                 ->limit(1)
                 ->order('create_time DESC')
@@ -244,6 +250,7 @@ class Authority extends Sm
         $list = Db::table('sm_area')
             ->where('sm_id',$this->uid)
             ->where('if_read',0)
+            ->where('pay_status',1)
             ->where('sm_mold','<>',2)
             ->where('audit_status','<>',0)
             ->field('id,audit_status')
@@ -375,6 +382,7 @@ class Authority extends Sm
         //获取所有被选择的城市
         $area = Db::table('sm_area')
             ->where('audit_status','<>',2)
+            ->where('pay_status',1)
             ->where('audit_status','<>',4)
             ->where('sm_mold','<>',2)
             ->field('id,area')
@@ -401,7 +409,8 @@ class Authority extends Sm
                 ->where([
                     'a.sm_id' => $this->uid,
                     'a.if_read' => 0,
-                    'a.sm_mold' => 2
+                    'a.sm_mold' => 2,
+                    'a.pay_status' => 1
                 ])
                 ->field('a.id,d.name as city')
                 ->order('id')
