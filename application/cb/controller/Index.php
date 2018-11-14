@@ -61,13 +61,11 @@ class Index extends Bby
 		$lat = input('get.lat');
 		$lng = input('get.lng');
 		$uid = input('get.uid');
-        // var_dump(input('get.'));die;
 		$data = [
 			'lat'=>$lat,
 			'lng'=>$lng,
-            'uid'=>$uid,
 		];
-		$this->upUserCoord($data,'u_user');
+		$this->upUserCoord($data,$uid,'u_user');
 	}
 
 	/**
@@ -455,7 +453,7 @@ class Index extends Bby
         if(empty($data)){ $this->result('',8,'未获取到用户经纬度');};
        $map = new Map();
        $city = $map->location($data['lat'],$data['lng']);
-       // print_r($city);exit;
+//        print_r($city);exit;
        // 根据县区获取县区id
        $county_id = Db::table('co_china_data')->where('name','like',$city['district'].'%')->value('id');
        // echo Db::table('co_china_data')->getLastSql();exit;

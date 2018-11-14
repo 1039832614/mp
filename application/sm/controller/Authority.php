@@ -199,6 +199,7 @@ class Authority extends Sm
                 'create_time' => date('Y-m-d H:i:s',time()),
                 'sm_id'       => $data['sm_id'],
                 'sm_profit'   => $divide,
+                'voucher'     => $data['voucher']
             ];
             $lastId = Db::table('sm_area')->insertGetId($arr);
             $openid = $data['openid'];
@@ -227,7 +228,7 @@ class Authority extends Sm
                'sm_profit'      => $divide,
                'sm_mold'        => $list['sm_mold'],
                'sm_type'        => $list['sm_type'],
-               'if_read'        => $list['if_read'],
+               'if_read'        => $list['if_read']
            ];
            // 如果有被驳回的订单则把订单修改成为重新向总后台进行审核  2018-10-9 cjx
            $ret = Db::table('sm_area')

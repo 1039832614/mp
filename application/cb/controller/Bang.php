@@ -411,17 +411,12 @@ class Bang extends Bby
 				if (($sign===$data_sign) && ($data['return_code']=='SUCCESS') && ($data['result_code']=='SUCCESS')){
 						$attach = $this->wx->getStrVal($data['attach']);
 						if(time() - Cache::get('card_time'.$attach['cid']) < 3600){
-							exit;
 							// 返回状态给微信服务器
-							echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-							// exit;
-							return $result;
+							$this->wx->returnWxXml(1);
+							exit;
 						}
-						// 
 						Cache::set('card_time'.$attach['cid'],time());
 						$result = $data;
-						
-
 						
 						// 获取用户的卡类型
 						$card_type = Db::table('u_card')->where('id',$attach['cid'])->field('card_type,card_price')->find();
@@ -471,11 +466,19 @@ class Bang extends Bby
 
 						// 给运营商服务经理市级代理售卡奖励
 							
-						$this->agentBlance($attach['sid'],$uid,$attach['cid'],$card_type['card_price'],$result);
-						// 返回状态给微信服务器
-						echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-						// exit;
-						return $result;
+						$a = $this->agentBlance($attach['sid'],$uid,$attach['cid'],$card_type['card_price'],$result);
+						if($a == true){
+							echo $this->wx->returnWxXml(1);
+							
+						}else{
+							// Db::table('u_card')->where('id',1)->find();
+							// 返回状态给微信服务器
+							echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
+							return $result;
+						}
+						
+						
+
 					}else{
 				
 						$result = false;
@@ -597,7 +600,6 @@ class Bang extends Bby
 				'gid'	   => $income['gid'],
 				'pro'	   => $income['profit'],
 			];
-			// print_r($supply);exit;
 			// 增加市级代理的总金额
 			$res = Db::table('cg_supply')->where('gid',$income['gid'])->inc('balance',floor($income['income']))->inc('sale_card')->update();
 			$su_income = Db::table('cg_income')
@@ -678,28 +680,39 @@ class Bang extends Bby
 			if($res !== false) {
 				// 判断该运营总监是否有分享者
 				$share_uid = Db::table('sm_area')->where(['sm_id'=>$sm_id,'sm_type'=>2])->value('share_id');
-				$share_sm = Db::table('sm_area')->where(['share_id'=>$share_uid,'sm_type'=>1])->count();
+				$share_sm = Db::table('sm_area')->where(['share_id'=>$share_uid,'sm_type'=>1,'area'=>$area])->count();
 				if($share_uid != 0 && $share_sm <= 0){
 					// 查询推荐者的奖励分成
 					$share_divi = Db::table('am_sm_set')->where('status',3)->value('maid');
 					// 查询该推荐者openid
-					$openid = Db::table('sm_user')->where('id',$share_uid)->value('open_id');
+					$share_openid = Db::table('sm_user')->where('id',$share_uid)->field('open_id,person_rank')->find();
 					// 获取订单号
 					$share_odd = build_only_sn();
 					// 构造数组进行入库操作
 					$share_arr = [
-						'share_id' => $share_uid,
-						'sm_id' => $sm_id,
-						'share_money' => $total*$share_divi/100,
-						'odd_num' => $share_odd,
-						'status' => 1,
-						'cid' => $cid,
-						'divi' => $share_divi,
+						
+						'sm_id' => $share_uid,//推荐者id		
+						'money' => $total*$share_divi/100,//收入金额
+						
+						'odd_number' => $share_odd,//订单号
+						
+						'company' => $yy_company,// 服务经理名称
+						
+						'address' => $address['province'],//地址
+						
+						'type' => 4,// 奖励类型  推荐奖励
+						
+						'read_status' => 1,//读取状态
+						
+						'cid' => $cid,//卡id
+						'person_rank' => $share_openid['person_rank'],
+						'uuid' => $sm_id,//获利源id
+						'sid' => $sid,
 					];
-					$share_int = Db::table('sm_share_reward')->insert($share_arr);
+					$share_int = Db::table('sm_income')->insert($share_arr);
 					if($share_int){
 						// $this->epay->sm_dibs($share_odd,$open_id,($total*$share_divi/100)*100,'售卡奖励分佣');
-						$this->epay->sm_dibs($share_odd,$open_id,1*100,'推荐售卡奖励分佣');
+						$this->epay->sm_dibs($share_odd,$share_openid['open_id'],1*100,'推荐售卡奖励分佣');
 					}
 					
 				}
@@ -779,23 +792,35 @@ class Bang extends Bby
 						// 查询推荐者的奖励分成
 						$share_divi = Db::table('am_sm_set')->where('status',3)->value('maid');
 						// 获取推荐者openid
-						$share_openid = Db::table('sm_user')->where('id',$share_uid)->value('open_id');
+						$share_openid = Db::table('sm_user')->where('id',$share_uid)->field('open_id,person_rank')->find();
 						// 订单号
 						$share_odd = build_only_sn();
 						// 构造数组进行入库操作
 						$share_arr = [
-							'share_id' => $share_uid,
-							'sm_id' => $sm_sm['sm_id'],
-							'share_money' => $total*$share_divi/100,
-							'odd_num' => $share_odd,
-							'cid' => $cid,
-							'divi' => $share_divi,
+						
+							'sm_id' => $share_uid,//推荐者id		
+							'money' => $total*$share_divi/100,//收入金额
+							
+							'odd_number' => $share_odd,//订单号
+							
+							'company' => $yy_company,// 服务经理名称
+							
+							'address' => $address['province'],//地址
+							
+							'type' => 4,// 奖励类型  推荐奖励
+							
+							'read_status' => 1,//读取状态
+							
+							'cid' => $cid,//卡id
+							'person_rank' => $share_openid['person_rank'],
+							'uuid' => $sm_sm['sm_id'],//获利源id
+							'sid' => $sid,
 						];
-						$share_int = Db::table('sm_share_reward')->insert($share_arr);
+						$share_int = Db::table('sm_income')->insert($share_arr);
 						if($share_int){
 							// 给推荐者转账到零钱
 							// $this->epay->sm_dibs($share_odd,$share_openid,($total*$share_divi/100)*100,'推荐售卡奖励');
-							$this->epay->sm_dibs($share_odd,$share_openid,1*100,'推荐售卡奖励');
+							$this->epay->sm_dibs($share_odd,$share_openid['open_id'],1*100,'推荐售卡奖励');
 						}
 						
 					}
