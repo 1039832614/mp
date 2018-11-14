@@ -19,6 +19,7 @@ class Bang extends Bby
 	function initialize()
 	{
 		$this->wx = new Wx();
+		$this->epay = new BbyEpay();
 	}
 
     
@@ -184,7 +185,11 @@ class Bang extends Bby
 			$this->result('',0,'缺少必要的参数');
 		}
 		// 判断该车牌和车型是否已被注册
-		$user_card = Db::table('u_card')->where('plate',$plate)->field('car_cate_id,uid')->find();
+		$user_card = Db::table('u_card')
+					->where(['plate'=>$plate,'pay_status'=>1])
+					->where('remain_times','>',0)
+					->field('car_cate_id,uid')
+					->find();
 		// print_r($user_card);exit;
 		
 		// 判断该用户之前是否有购买过邦保养卡
@@ -289,7 +294,7 @@ class Bang extends Bby
 				//状态默认为已发货   如果用户没有付款成功也不会影响到总后台发货列表数据
 				'status'=>2,
 				'member'=>$memberId,
-				// 下次小程序上传代码时修改
+				// 下次小程序上传代码时修改 已修改
 				'area'=>$data['close']['area'],
 			];
             
@@ -370,8 +375,8 @@ class Bang extends Bby
             'mch_id' => Config::get('mch_id'),
             'nonce_str' => $this->wx->getNonceStr(), 
             'body' => $data['cate_name'].'邦保养卡',  
-            // 'total_fee' => $data['card_price'],   // 10.24 修改金额
-             'total_fee' => 1,  //测试金额，上线请改回。
+            'total_fee' => $data['card_price'],   // 10.24 修改金额
+             // 'total_fee' => 1,  //测试金额，上线请改回。
             'openid' => $openid,
             'out_trade_no'=> $data['trade_no'], 
             'spbill_create_ip' => '127.0.0.1', 
@@ -417,14 +422,18 @@ class Bang extends Bby
 						$result = $data;
 						
 
-						// 更新购卡状态
-						Db::table('u_card')->where('id',$attach['cid'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1,'card_reward'=>10]);
+						
 						// 获取用户的卡类型
 						$card_type = Db::table('u_card')->where('id',$attach['cid'])->field('card_type,card_price')->find();
 
 						if($card_type['card_type'] == 1){
+							//2018-11-12 cjx修改
+							// 更新购卡状态
+							Db::table('u_card')->where('id',$attach['cid'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1]);
 							Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('card_month')->update();
 						}else{
+							// 更新购卡状态
+							Db::table('u_card')->where('id',$attach['cid'])->update(['transaction_id'=>$result['transaction_id'],'pay_status'=>1,'card_reward'=>10]);
 							// 店铺售卡数增加
 							Db::table('cs_shop')->where('id',$attach['sid'])->inc('card_sale_num')->inc('balance',10)->inc('card_month')->update();
 						}
@@ -507,11 +516,6 @@ class Bang extends Bby
 
         $agent_set = Db::table('cs_shop')->where('id',$sid)->value('aid');
         $profit = Db::table('ca_agent_set')->where('aid',$agent_set)->value('profit');
-		// if(empty($profit)){
-		// 	// 返回状态给微信服务器
-		// 	echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-		// 	return $result;
-		// }
 		$money = $total*$profit/100;
 		//增加运营商售卡数量
 		$ca_inc = Db::table('ca_agent')->where('aid',$agent_set)->inc('balance',$money)->inc('sale_card')->update();
@@ -526,16 +530,12 @@ class Bang extends Bby
 			'aid' => $agent_set,
 			'form' => 1
 		];
+		// 增加运营商收入
 		$ca_inc_log = Db::table('ca_income')
 						->strict(false)
 						->insert($arr_inc);
 		// 判断该运营商是否存在
 		$agent_isset = Db::table('ca_agent')->where('aid',$agent_set)->count();
-		// if($agent_isset <= 0){
-		// 	// 返回状态给微信服务器
-		// 	echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-		// 	return $result;
-		// }
 		// 查看运营商是否有市级代理
 		$gid = Db::table('ca_agent')->where('aid',$agent_set)->field('gid')->find();
 		// exit;
@@ -554,6 +554,11 @@ class Bang extends Bby
 					])
 					->where('sm_mold','<>',2)
 					->count();
+		// 判断是否有服务经理
+		if($sm_user){
+			$sm = $this->smReward($sid,$agent_set,$total,$cid);
+		}
+
 		//判断区域内是否有运营总监
 		$sm_yy = Db::table('sm_area')
 				  ->alias('a')
@@ -598,84 +603,20 @@ class Bang extends Bby
 			$su_income = Db::table('cg_income')
 							->strict(false)
 							->insert($supply);
-			
-			// return $city;die();
-			if($sm_user > 0){
-				// 查询该地区有无服务经理
-				// 获取服务经理分佣
-				$sm = $this->smReward($sid,$agent_set,$total,$cid);
-
-				// if($ca_inc_log && $su_income && $sm == ture){
-				// xjm 2018.10.27 15:28
-				if($ca_inc_log && $su_income && $sm == true){
-					// // $this->result('',1,'成功');
-					// // 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return true;
-				}else{
-					// $this->result('',0,'失败');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return false;
-				}
+			// xjm 2018.10.27 15:28
+			if($ca_inc_log && $su_income){
+				return true;
 			}else{
-				if($ca_inc_log && $su_income){
-					// $this->result('',1,'成功');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return true;
-				}else{
-					// $this->result('',0,'失败');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return false;
-				}
-			}	
+				return false;
+			}
 			
 		}else{
-			// 获取运营商所供应地区的市级id
-			$city = $this->agentSm($agent_set);
-			// return $city;die();
-			// $sm_user = Db::table('sm_area')->where('area',$city)->count();
-			if($sm_user > 0){
-				// 查询该地区有无服务经理
-				// 获取服务经理分佣
-				$sm = $this->smReward($sid,$agent_set,$total,$cid);
-				if($ca_inc_log && $sm == true){
-					// $this->result('',1,'成功');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return true;
-				}else{
-					// $this->result('',0,'失败');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return false;
-				}
+			if($ca_inc_log){
+				return true;
 			}else{
-				if($ca_inc_log){
-					// $this->result('',1,'成功');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return true;
-				}else{
-					// $this->result('',0,'失败');
-					// 返回状态给微信服务器
-					// echo ($result) ? $this->wx->returnWxXml(1) : $this->wx->returnWxXml(0);
-					// return $result;
-					return false;
-				}
-			}	
-			
-		}
-		
+				return false;
+			}
+		}		
 	}
 
 	/**
@@ -730,13 +671,40 @@ class Bang extends Bby
 				'sid' => $sid,
 				'if_finish' => 1
 			];
+
 			$res = Db::table('sm_income')
 							->strict(false)
 							->insert($arr);
 			if($res !== false) {
-				$epay = new BbyEpay();
-						// $sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,$money*100,'售卡奖励分佣');
-				$sm_yy_reward = $epay->sm_dibs($trade_no,$open_id,1*100,'售卡奖励分佣');
+				// 判断该运营总监是否有分享者
+				$share_uid = Db::table('sm_area')->where(['sm_id'=>$sm_id,'sm_type'=>2])->value('share_id');
+				$share_sm = Db::table('sm_area')->where(['share_id'=>$share_uid,'sm_type'=>1])->count();
+				if($share_uid != 0 && $share_sm <= 0){
+					// 查询推荐者的奖励分成
+					$share_divi = Db::table('am_sm_set')->where('status',3)->value('maid');
+					// 查询该推荐者openid
+					$openid = Db::table('sm_user')->where('id',$share_uid)->value('open_id');
+					// 获取订单号
+					$share_odd = build_only_sn();
+					// 构造数组进行入库操作
+					$share_arr = [
+						'share_id' => $share_uid,
+						'sm_id' => $sm_id,
+						'share_money' => $total*$share_divi/100,
+						'odd_num' => $share_odd,
+						'status' => 1,
+						'cid' => $cid,
+						'divi' => $share_divi,
+					];
+					$share_int = Db::table('sm_share_reward')->insert($share_arr);
+					if($share_int){
+						// $this->epay->sm_dibs($share_odd,$open_id,($total*$share_divi/100)*100,'售卡奖励分佣');
+						$this->epay->sm_dibs($share_odd,$open_id,1*100,'推荐售卡奖励分佣');
+					}
+					
+				}
+				// $sm_yy_reward = $this->epay->sm_dibs($trade_no,$open_id,,$money*100',售卡奖励分佣');
+				$sm_yy_reward = $this->epay->sm_dibs($trade_no,$open_id,1*100,'售卡奖励分佣');
 				if($sm_yy_reward!==false) {
 					return true;
 				} else {
@@ -803,12 +771,40 @@ class Bang extends Bby
 					Db::table('sm_user')->where('id',$sm_sm['sm_id'])->setInc('balance',$money);
 					// 获取服务经理的openid
 					$sm_name = $this->openid($sm_sm['sm_id']);
-					// print_r($sm_name);exit;
+
+
+					// 判断服务经理是否有推荐人
+					$share_uid = Db::table('sm_area')->where('sm_id',$sm_sm['sm_id'])->value('share_id');
+					if($share_uid != 0){
+						// 查询推荐者的奖励分成
+						$share_divi = Db::table('am_sm_set')->where('status',3)->value('maid');
+						// 获取推荐者openid
+						$share_openid = Db::table('sm_user')->where('id',$share_uid)->value('open_id');
+						// 订单号
+						$share_odd = build_only_sn();
+						// 构造数组进行入库操作
+						$share_arr = [
+							'share_id' => $share_uid,
+							'sm_id' => $sm_sm['sm_id'],
+							'share_money' => $total*$share_divi/100,
+							'odd_num' => $share_odd,
+							'cid' => $cid,
+							'divi' => $share_divi,
+						];
+						$share_int = Db::table('sm_share_reward')->insert($share_arr);
+						if($share_int){
+							// 给推荐者转账到零钱
+							// $this->epay->sm_dibs($share_odd,$share_openid,($total*$share_divi/100)*100,'推荐售卡奖励');
+							$this->epay->sm_dibs($share_odd,$share_openid,1*100,'推荐售卡奖励');
+						}
+						
+					}
+
+
 					if($res !== false){
-						$epay = new BbyEpay();
-						// $sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],$money*100,'服务经理售卡奖励分佣');
-						$sm_reward = $epay->sm_dibs($trade_no,$sm_name['open_id'],1*100,'服务经理售卡奖励分佣');
-						// return $sm_reward;die();
+						// $epay = new BbyEpay();
+						// $sm_reward = $this->epay->sm_dibs($trade_no,$sm_name['open_id'],$money*100,'服务经理售卡奖励分佣');
+						$sm_reward = $this->epay->sm_dibs($trade_no,$sm_name['open_id'],1*100,'服务经理售卡奖励分佣');
 					}
 					// 通过服务经理id 及 服务经理的地区判断服务经理该地区通过的时间
 					$sm_audit = Db::table('sm_area')->where(['sm_id'=>$sm_sm['sm_id'],'area'=>$city])->value('audit_time');
@@ -823,46 +819,6 @@ class Bang extends Bby
 							// 服务经理余额增加
 							Db::table('sm_user')->where('sm_id',$sm_sm['sm_id'])->setInc('balance',2000);
 						}
-					}
-
-					// // 根据服务经理id获取运营总监id和是否开启管理奖励 和分佣比例 查询否有加入团队
-					// $sm_yy = Db::table('sm_team st')
-					// 	 ->join('sm_area sa','st.sm_header_id = sa.sm_id')
-					// 	 ->where('st.sm_member_id','like','%'.$sm_sm['sm_id'].'%')
-					// 	 ->where(['sa.audit_status'=>1,'sa.sm_type'=>2,'admin_raw'=>1,'is_exits'=>1,'area'=>$province])
-					// 	 ->where('sm_mold','<>',2)
-					// 	 ->field('sm_id,sm_profit')
-					// 	 ->find();
-
-					// // 判断改运营总监所管辖的该地区管理奖励是否开启 开启则给运营总监分佣
-					// if(!empty($sm_yy)){
-					// 	$money = $total*$sm_yy['sm_profit']/100;
-					// 	// 运营总监进行入库操作
-					// 	$yy_trade_no = build_only_sn();
-					// 	$yy_insert = [
-					// 		'sm_id'=>$sm_yy['sm_id'],
-					// 		'odd_number'=>$yy_trade_no,
-					// 		'company'=>$sm_name['name'],
-					// 		'money'=>$money,
-					// 		'address'=>$address['province'].$address['city'],
-					// 		'cid'=>$cid,
-					// 		'person_rank'=>2,
-					// 		'sid'=>$sid,
-					// 		'uuid'=>$sm_sm['sm_id'],
-					// 	];
-					// 	$result = Db::table('sm_income')->insert($yy_insert);
-					// 	// 查询运营总监的open_id 
-					// 	$sy_yy = $this->openid($sm_yy['sm_id']);
-					// 	if($result!==false){
-					// 		$epay = new BbyEpay();
-					// 		$yy_reward = $epay->sm_dibs($yy_trade_no,$sy_yy['open_id'],1,'售卡奖励分佣');
-					// 	}
-					// 	if($sm_reward && $yy_reward){
-					// 		return true;
-					// 	}
-					// }
-					if($sm_reward){
-						return true;
 					}
 					
 				}	
@@ -1080,6 +1036,9 @@ class Bang extends Bby
 			}
 		
 	}
+
+
+
 
 	/**
 	 * 维修厂的工时费百分比

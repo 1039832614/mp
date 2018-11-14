@@ -152,7 +152,52 @@ class Income extends Sm
 			$this->result('',0,'暂无数据');
 		}
 	}
-	
+	/**
+	 * 推荐奖励
+	 * @return [type] [description]
+	 */
+	public function referrerIncome()
+	{
+		//维修厂名称，运营商名称，金额，时间，收入id
+		$page = input('post.page') ? :1;
+		$count = Db::table('sm_income')
+				->alias('i')
+				->join('cs_shop s','s.id = i.sid')
+				->join('ca_agent a','a.aid = s.aid')
+				->join('cs_shop_set ss','ss.sid = s.id')
+				->join('sm_user u','i.uuid = u.id')
+				->where([
+					'i.person_rank' => 1,
+					'i.sm_id'     => $this->uid,
+					'i.type'        => 4
+				])
+				->count();
+		$pageSize = 5;
+		$list = Db::table('sm_income')
+				->alias('i')
+				->join('cs_shop s','s.id = i.sid')
+				->join('ca_agent a','a.aid = s.aid')
+				->join('cs_shop_set ss','ss.sid = s.id')
+				->join('sm_user u','i.uuid = u.id')
+				->where([
+					'i.person_rank' => 1,
+					'i.sm_id'     => $this->uid,
+					'i.type'        => 4
+				])
+				->order('i.id desc')
+				->field('u.name as name,a.company as agent_company,i.money,ss.province,ss.city,ss.county,i.create_time as time,i.id')
+				->page($page,$pageSize)
+				->select();
+		$rows = ceil($count / $pageSize);
+		if($list) {
+			foreach ($list as $key => $value) {
+				$list[$key]['detail'] = $list[$key]['province'].$value['city'];
+			}
+			$this->result(['list' => $list,'rows' => $rows],1,'获取成功');
+		} else {
+			$this->result('',0,'暂无数据');
+		}
+	}
 	/**
 	 * 服务经理团队奖励
 	 * @return [type] [description]
@@ -284,6 +329,37 @@ class Income extends Sm
 								->value('a.sm_profit');
 			$info['profit'] = $info['profit'].'%';			
 
+			$info['mold'] = '微信零钱';
+			$this->result($info,1,'获取成功');
+		} else {
+			$this->result('',0,'获取失败');
+		}
+	}
+	/**
+	 * 账单详情
+	 * @return [type] [description]
+	 */
+	public function incomeDetail(){
+		//获取提交过来的收入id
+		$id = input('post.id');
+		//返给前端地区，金额，收益来源：服务经理名称，车的品牌，类型，排量，时间，收益类型，收款方式，售卡金额
+		$info = Db::table('sm_income')
+				->alias('i')
+				->join('cs_shop s','i.sid = s.id')
+				->join('u_card c','c.id = i.cid')
+				->join('co_car_cate cc','cc.id = c.car_cate_id')
+				->join('co_car_menu cm','cm.id = cc.brand')
+				->join('sm_user u','i.uuid = u.id')
+				->where([
+					'i.id' => $id
+				])
+				->field('i.money,i.sm_id,i.sid,i.address,cc.type as car_type,cm.name as car_brand,cc.series,u.name,i.create_time,i.type,c.card_price')
+				->find();
+		if($info) {
+			$info['profit'] = Db::table('am_sm_set')
+								->where('status',3)
+								->value('maid');
+			$info['profit'] = $info['profit'].'%';			
 			$info['mold'] = '微信零钱';
 			$this->result($info,1,'获取成功');
 		} else {
@@ -534,7 +610,7 @@ class Income extends Sm
     		
     	}
     	$info['kfjl'] = $this->getMoney($this->uid,2);
-    	
+    	$info['tjjl'] = $this->getMoney($this->uid,4);
     	$info['gljl'] = $this->getMoney($this->uid,3);
     	if($info){
     		$this->result($info,1,'获取成功');
